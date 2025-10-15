@@ -1,7 +1,7 @@
 # LOGAN: Logical GANs
 
 <p align="center">
-  <img src="assets/logo/logan-logo-black.svg" alt="LOGAN Logo" width="200"/>
+  <img src="docs/assets/logical-gans-logo-black-1024.png" alt="LOGAN Logo" width="200"/>
 </p>
 
 **Adversarial Learning through Ehrenfeucht-Fra\"isse Games**
