@@ -6,7 +6,7 @@
 
 **Adversarial Learning through Ehrenfeucht-Fra\"isse Games**
 
-[![CI](https://github.com/holomathics/logan/workflows/CI/badge.svg)](https://github.com/holomathics/logan/actions)
+[![CI](https://github.com/Mircus/Logan/workflows/CI/badge.svg)](https://github.com/Mircus/Logan/actions)
 [![License: HNCL](https://img.shields.io/badge/License-HNCL-blue.svg)](LICENSE.txt)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
@@ -33,8 +33,8 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/holomathics/logan.git
-cd logan
+git clone https://github.com/Mircus/Logan.git
+cd Logan
 
 # Install package
 python -m pip install -e .
@@ -112,7 +112,13 @@ k  | Accuracy
 5  | 0.50
 ```
 
-**Interpretation**: ~50% accuracy confirms that naive prototypes don't capture class structure, motivating richer approaches (multiple prototypes, learned thresholds).
+**Interpretation**: The ~50% accuracy (random baseline) is **intentional and validates the framework**. This demonstrates that:
+- Naive single-prototype EF-distance classification doesn't work
+- Random prototype selection gives random performance
+- This motivates the need for the full logical loss framework with multiple prototypes, learned thresholds, and training integration
+- The sophisticated approach (Section 5.3 logical loss) is necessary for good performance
+
+**Key Insight**: This is a **sanity check baseline**, not the final approach. It proves that simple methods fail, justifying the complex machinery.
 
 **Run**:
 ```bash
@@ -351,7 +357,7 @@ Please open an issue before starting major work.
 **Author**: Mirco A. Mannucci
 **Organization**: HoloMathics, LLC
 **Email**: [mirco@holomathics.com](mailto:mirco@holomathics.com)
-**GitHub**: [holomathics/logan](https://github.com/holomathics/logan)
+**GitHub**: [Mircus/Logan](https://github.com/Mircus/Logan)
 
 ---
 
