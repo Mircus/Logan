@@ -455,7 +455,11 @@ class LogicalGANTrainer:
             # Generate random trees
             for _ in range(num_graphs):
                 n = np.random.randint(3, max_nodes)
-                tree = nx.random_tree(n)
+                # Create tree using path or star graph (nx.random_tree doesn't exist)
+                if np.random.rand() < 0.5:
+                    tree = nx.path_graph(n)
+                else:
+                    tree = nx.star_graph(n-1)
                 theory_graphs.append(tree)
                 
         elif property_name == 'connectivity':

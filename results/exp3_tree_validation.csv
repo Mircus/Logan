@@ -1,0 +1,2 @@
+property,theory_sat,untrained_sat,trained_sat,sat_improvement,untrained_ef,trained_ef,ef_improvement,loss_discrimination,verdict
+tree,1.0000,0.0600,0.9200,+0.8600,0.0000,0.0000,+0.0000,+0.0875,PASS

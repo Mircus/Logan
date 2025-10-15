@@ -1,0 +1,2 @@
+property,theory_sat,untrained_sat,trained_sat,sat_improvement,untrained_ef,trained_ef,ef_improvement,loss_discrimination,verdict
+bipartite,1.0000,0.2600,0.9800,+0.7200,0.0000,0.0000,+0.0000,+0.0500,PASS
