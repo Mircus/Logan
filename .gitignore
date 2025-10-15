@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+.env.*
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Data/outputs
+outputs/
+runs/
+checkpoints/
+*.log
+
+# Results (optional - uncomment to track CSVs in git)
+# results/*.csv
+
+# OS
+.DS_Store
+Thumbs.db

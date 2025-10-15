@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logical-gans"
+version = "0.1.0"
+description = "Logical GANs: adversarial learning under logical constraints (FO/MSO, EF games)"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Mirco A. Mannucci" }]
+license = { text = "Proprietary - Holomathics Non-Commercial License" }
+dependencies = [
+  "numpy",
+  "scipy",
+  "torch>=2.2",
+  "networkx",
+  "tqdm",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+logical-gans-repro = "logical_gans.repro:main"
