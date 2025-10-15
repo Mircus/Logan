@@ -311,8 +311,17 @@ GitHub Actions CI runs on every push:
 - ✅ Full documentation
 
 ### Future Extensions
+
+**Note on Training**: The current release (v0.1.0) provides **evaluation tools** and demonstrates baseline performance. The logical loss module is implemented but training integration (backpropagation through discrete structures) is staged for future work.
+
+**Expected improvements with full training**:
+- Current (Exp2 naive baseline): ~50% accuracy
+- With training + logical loss: Significantly improved performance (to be validated in future work)
+
+**Planned extensions**:
 - 🔄 Training integration (REINFORCE, Straight-Through, Learned Surrogate)
-- 🔄 Multiple prototype selection
+- 🔄 Multiple prototype selection and learned thresholds
+- 🔄 Full empirical evaluation with training curves
 - 🔄 Richer graph families
 - 🔄 Scalability optimizations (larger graphs)
 - 🔄 Additional properties (Hamiltonicity, graph isomorphism)
