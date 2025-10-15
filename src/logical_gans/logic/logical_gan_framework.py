@@ -61,11 +61,14 @@ class GraphGenerator(nn.Module):
         # Generate adjacency matrices
         edge_logits = self.edge_net(z)
         edge_logits = edge_logits.view(batch_size, self.max_nodes, self.max_nodes)
-        
+
         # Make symmetric and remove self-loops
         edge_logits = (edge_logits + edge_logits.transpose(-1, -2)) / 2
-        edge_logits.fill_diagonal_(0)
-        
+
+        # Remove self-loops by masking diagonal
+        mask = torch.eye(self.max_nodes, dtype=torch.bool).unsqueeze(0).expand(batch_size, -1, -1)
+        edge_logits = edge_logits.masked_fill(mask, -1e9)  # Large negative value
+
         adj_matrix = torch.sigmoid(edge_logits)
         
         # Generate node counts
@@ -320,9 +323,10 @@ class LogicalGAN:
         
         for epoch in range(epochs):
             # Sample real graphs from theory
-            real_sample = np.random.choice(theory_graphs, size=batch_size, replace=True)
-            
-            metrics = self.train_step(real_sample.tolist(), batch_size)
+            indices = np.random.randint(0, len(theory_graphs), size=batch_size)
+            real_sample = [theory_graphs[i] for i in indices]
+
+            metrics = self.train_step(real_sample, batch_size)
             
             if epoch % log_interval == 0:
                 print(f"Epoch {epoch:04d} | "

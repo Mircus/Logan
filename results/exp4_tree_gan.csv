@@ -1,0 +1,2 @@
+property,epochs,baseline_sat,final_sat,sat_improvement,baseline_ef_dist,final_ef_dist,ef_improvement,final_perfect_ef_rate,latent_dim,logic_depth,batch_size
+tree,300,0.2100,0.2600,+0.0500,0.0000,0.0000,+0.0000,1.0000,64,3,16
