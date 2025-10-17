@@ -1,2 +1,2 @@
 property,epochs,baseline_sat,final_sat,sat_improvement,baseline_ef_dist,final_ef_dist,ef_improvement,final_perfect_ef_rate,latent_dim,logic_depth,batch_size
-bipartite,500,0.5100,0.5200,+0.0100,0.0000,0.0000,+0.0000,1.0000,64,3,16
+connectivity,400,0.9200,0.9800,+0.0600,0.0000,0.0000,+0.0000,1.0000,64,3,16

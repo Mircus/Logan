@@ -175,12 +175,13 @@ python experiments/exp3_framework_validation.py --property connectivity
 - Combined loss: Adversarial + EF-distance + Property violation
 - Adam optimizers with 200-300 epochs
 
-**Results** (CPU training, 200-300 epochs):
+**Results** (CPU training, 200-400 epochs):
 ```
 Property     | Baseline | After Training | Improvement | Epochs
 -------------|----------|----------------|-------------|-------
 Bipartite    |   28%    |     42%        |   +14%      |  200
 Tree         |   21%    |     26%        |   +5%       |  300
+Connectivity |   92%    |     98%        |   +6%       |  400
 ```
 
 **Interpretation**: This experiment **proves the framework works with real neural training**:
@@ -197,9 +198,10 @@ Tree         |   21%    |     26%        |   +5%       |  300
 # Quick test (50 epochs, small model)
 python experiments/exp4_real_gan_training.py --property tree --epochs 50 --quick
 
-# Full training (200-300 epochs)
+# Full training (200-400 epochs)
 python experiments/exp4_real_gan_training.py --property bipartite --epochs 200
 python experiments/exp4_real_gan_training.py --property tree --epochs 300
+python experiments/exp4_real_gan_training.py --property connectivity --epochs 400
 ```
 
 **Outputs**: `results/exp4_{property}_gan.csv`
@@ -408,6 +410,7 @@ GitHub Actions CI runs on every push:
 **Real neural GAN training (Experiment 4)**:
 - Bipartite property: **42% satisfaction** (vs 28% baseline, +14% improvement, 200 epochs CPU)
 - Tree property: **26% satisfaction** (vs 21% baseline, +5% improvement, 300 epochs CPU)
+- Connectivity property: **98% satisfaction** (vs 92% baseline, +6% improvement, 400 epochs CPU)
 
 The combination of simulation and real training provides strong evidence that the logical GAN framework works. Real training on GPU would achieve higher satisfaction rates.
 
