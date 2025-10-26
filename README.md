@@ -342,16 +342,10 @@ logan/
 
 **Abstract**: LOGAN casts the discriminator as a depth-*k* Ehrenfeucht-Fra\"isse (EF) Devil that searches for small, legible faults (odd cycles, nonplanar crossings, directed bridges), while the generator plays Builder, producing samples that admit a *k*-round matching to a target theory T.
 
+**Academia**   https://www.academia.edu/144645448/Logical_GANs_Adversarial_Learning_through_Ehrenfeucht_Fra%C3%AFss%C3%A9_Games
 **arXiv**: [Coming soon]
 
-**Cite**:
-```bibtex
-@article{mannucci2025logan,
-  title={Logical GANs: Adversarial Learning through Ehrenfeucht-Fra\"isse Games},
-  author={Mannucci, Mirco A.},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2025}
-}
+
 ```
 
 ---
