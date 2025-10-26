@@ -331,8 +331,7 @@ logan/
 │   └── exp4_*_gan.csv         # Experiment 4 results (NEW)
 ├── tests/
 │   └── test_sanity.py         # Basic sanity tests
-└── paper/
-    └── main.tex              # Paper LaTeX source
+
 ```
 
 ---
