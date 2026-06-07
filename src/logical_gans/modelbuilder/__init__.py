@@ -11,13 +11,21 @@ from .core.clauses import HornClause
 from .core.devil import DevilResult, run_devil
 from .core.generator import GenerateResult, generate
 from .core.partial_structure import PartialStructure
+from .core.loader import (
+    TheoryLoadError,
+    load_claim,
+    load_structure,
+    load_theory,
+)
 from .core.policy import (
     BuilderPolicy,
     MaximalHornPolicy,
     SparseHornPolicy,
     get_policy,
 )
+from .core.runner import check, refute, synthesize
 from .core.signature import Signature
+from .core.theory import Claim, Theory
 from .core.types import Truth
 from .core.witness import Witness
 
@@ -35,4 +43,13 @@ __all__ = [
     "SparseHornPolicy",
     "MaximalHornPolicy",
     "get_policy",
+    "Theory",
+    "Claim",
+    "load_theory",
+    "load_claim",
+    "load_structure",
+    "TheoryLoadError",
+    "synthesize",
+    "check",
+    "refute",
 ]

@@ -1,0 +1,27 @@
+{
+  "name": "semigroup",
+  "signature": {
+    "relations": [],
+    "functions": [{"name": "mul", "arity": 2}],
+    "constants": []
+  },
+  "clauses": [
+    {
+      "name": "associativity",
+      "variables": ["x", "y", "z"],
+      "premises": [],
+      "conclusion": {
+        "eq": [
+          {"func": "mul", "args": [
+            {"func": "mul", "args": [{"var": "x"}, {"var": "y"}]},
+            {"var": "z"}
+          ]},
+          {"func": "mul", "args": [
+            {"var": "x"},
+            {"func": "mul", "args": [{"var": "y"}, {"var": "z"}]}
+          ]}
+        ]
+      }
+    }
+  ]
+}

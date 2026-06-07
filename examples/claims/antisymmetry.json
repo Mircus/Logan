@@ -1,0 +1,14 @@
+{
+  "name": "antisymmetry",
+  "clauses": [
+    {
+      "name": "antisymmetric",
+      "variables": ["x", "y"],
+      "premises": [
+        {"rel": "R", "args": [{"var": "x"}, {"var": "y"}]},
+        {"rel": "R", "args": [{"var": "y"}, {"var": "x"}]}
+      ],
+      "conclusion": {"eq": [{"var": "x"}, {"var": "y"}]}
+    }
+  ]
+}

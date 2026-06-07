@@ -1,0 +1,31 @@
+{
+  "name": "equivalence_relation",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [],
+    "constants": []
+  },
+  "clauses": [
+    {
+      "name": "reflexive",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"rel": "E", "args": [{"var": "x"}, {"var": "x"}]}
+    },
+    {
+      "name": "symmetric",
+      "variables": ["x", "y"],
+      "premises": [{"rel": "E", "args": [{"var": "x"}, {"var": "y"}]}],
+      "conclusion": {"rel": "E", "args": [{"var": "y"}, {"var": "x"}]}
+    },
+    {
+      "name": "transitive",
+      "variables": ["x", "y", "z"],
+      "premises": [
+        {"rel": "E", "args": [{"var": "x"}, {"var": "y"}]},
+        {"rel": "E", "args": [{"var": "y"}, {"var": "z"}]}
+      ],
+      "conclusion": {"rel": "E", "args": [{"var": "x"}, {"var": "z"}]}
+    }
+  ]
+}

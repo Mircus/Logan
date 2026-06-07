@@ -1,0 +1,25 @@
+{
+  "name": "preorder",
+  "signature": {
+    "relations": [{"name": "R", "arity": 2}],
+    "functions": [],
+    "constants": []
+  },
+  "clauses": [
+    {
+      "name": "reflexive",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"rel": "R", "args": [{"var": "x"}, {"var": "x"}]}
+    },
+    {
+      "name": "transitive",
+      "variables": ["x", "y", "z"],
+      "premises": [
+        {"rel": "R", "args": [{"var": "x"}, {"var": "y"}]},
+        {"rel": "R", "args": [{"var": "y"}, {"var": "z"}]}
+      ],
+      "conclusion": {"rel": "R", "args": [{"var": "x"}, {"var": "z"}]}
+    }
+  ]
+}
