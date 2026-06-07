@@ -1,38 +1,55 @@
+"""CLI for the bounded partial-model kernel."""
 from __future__ import annotations
 
 import argparse
 import json
-from typing import Any
-
-from .engine import run_group_episode
-from .theories.groups import find_counterexample_all_groups_abelian
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: "list[str] | None" = None) -> int:
     parser = argparse.ArgumentParser(prog="logan-modelbuilder")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_build = sub.add_parser("build-group", help="build and challenge a finite group candidate")
-    p_build.add_argument("--kind", choices=["cyclic", "klein", "dihedral"], default="cyclic")
-    p_build.add_argument("--n", type=int, default=4, help="cyclic order or dihedral m parameter")
-    p_build.add_argument("--k", type=int, default=2)
-    p_build.add_argument("--budget", type=int, default=100)
-    p_build.add_argument("--abelian", action="store_true", help="also challenge commutativity")
+    p_pre = sub.add_parser("synthesize-preorder", help="fill an unknown preorder of size n")
+    p_pre.add_argument("--n", type=int, default=3)
 
-    p_cex = sub.add_parser("counterexample", help="find a LOGAN counterexample certificate")
-    p_cex.add_argument("--claim", choices=["all_groups_abelian"], required=True)
-    p_cex.add_argument("--max-order", type=int, default=8)
+    sub.add_parser(
+        "refute-preorder-antisymmetry",
+        help="produce a 2-element preorder refuting antisymmetry",
+    )
+
+    p_sg = sub.add_parser("synthesize-semigroup", help="fill an unknown semigroup of size n")
+    p_sg.add_argument("--n", type=int, default=1)
 
     args = parser.parse_args(argv)
-    if args.cmd == "build-group":
-        result = run_group_episode(args.kind, args.n, k=args.k, budget=args.budget, include_commutativity=args.abelian)
-        print(json.dumps(result.to_dict(), indent=2))
+
+    if args.cmd == "synthesize-preorder":
+        from .core.generator import generate
+        from .examples.preorder import empty_preorder_structure, preorder_clauses
+
+        res = generate(empty_preorder_structure(args.n), preorder_clauses())
+        print(json.dumps(
+            {"status": res.status, "structure": res.structure.to_json(), "trace": res.trace},
+            indent=2,
+        ))
         return 0
-    if args.cmd == "counterexample":
-        if args.claim == "all_groups_abelian":
-            cert = find_counterexample_all_groups_abelian(args.max_order)
-            print(json.dumps(cert.to_dict(), indent=2))
-            return 0
+
+    if args.cmd == "refute-preorder-antisymmetry":
+        from .examples.preorder import antisymmetry_refutation
+
+        print(json.dumps(antisymmetry_refutation(), indent=2))
+        return 0
+
+    if args.cmd == "synthesize-semigroup":
+        from .core.generator import generate
+        from .examples.semigroup import empty_semigroup_structure, semigroup_clauses
+
+        res = generate(empty_semigroup_structure(args.n), semigroup_clauses())
+        print(json.dumps(
+            {"status": res.status, "structure": res.structure.to_json(), "trace": res.trace},
+            indent=2,
+        ))
+        return 0
+
     parser.error("unreachable command")
     return 2
 

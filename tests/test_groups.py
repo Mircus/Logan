@@ -1,39 +1,31 @@
-from logical_gans.modelbuilder.theories.groups import (
-    build_cyclic_group,
-    build_dihedral_group,
-    build_klein_four_group,
-    commutativity_witness,
-    find_counterexample_all_groups_abelian,
-    verify_group,
+"""Regression tests for the demoted known-group fixtures.
+
+Known groups are NOT the model builder; they are sanity fixtures.
+The real kernel lives in tests/test_core_*.py.
+"""
+from logical_gans.modelbuilder.fixtures.known_groups import (
+    cyclic_group,
+    dihedral_group,
+    is_abelian,
+    is_group,
+    klein_four_group,
 )
 
 
-def test_cyclic_groups_are_groups_and_abelian():
+def test_cyclic_groups_are_abelian_groups():
     for n in [1, 2, 5, 8]:
-        A = build_cyclic_group(n)
-        ok, witnesses = verify_group(A)
-        assert ok, witnesses
-        assert commutativity_witness(A) is None
+        g = cyclic_group(n)
+        assert is_group(g)
+        assert is_abelian(g)
 
 
-def test_klein_four_group_is_group_and_abelian():
-    A = build_klein_four_group()
-    ok, witnesses = verify_group(A)
-    assert ok, witnesses
-    assert commutativity_witness(A) is None
+def test_klein_four_group_is_abelian_group():
+    g = klein_four_group()
+    assert is_group(g)
+    assert is_abelian(g)
 
 
-def test_dihedral_three_is_group_but_not_abelian():
-    A = build_dihedral_group(3)
-    ok, witnesses = verify_group(A)
-    assert ok, witnesses
-    w = commutativity_witness(A)
-    assert w is not None
-    assert w.kind == "commutativity_failure"
-
-
-def test_counterexample_all_groups_abelian():
-    cert = find_counterexample_all_groups_abelian(max_order=8)
-    assert cert.assumptions_verified is True
-    assert cert.structure_name == "D_3"
-    assert cert.refuting_witness.kind == "commutativity_failure"
+def test_dihedral_three_is_a_nonabelian_group():
+    g = dihedral_group(3)
+    assert is_group(g)
+    assert not is_abelian(g)

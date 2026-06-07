@@ -1,49 +1,69 @@
 # LOGAN ModelBuilder
 
-Companion sub-repo for **LOGAN as a mathematical model and countermodel builder**.
+A bounded **partial finite-model generation** kernel that lives inside LOGAN
+at `src/logical_gans/modelbuilder/`. It is stdlib-only and does not import
+torch.
 
-This is designed to sit inside the existing LOGAN repo, for example:
+Given:
+
+- a finite domain size `n`,
+- a signature (relation / function / constant symbols),
+- axioms in a restricted first-order fragment,
+
+the **Generator** fills an initially *unknown* interpretation table while the
+**Devil** checks bounded axiom instances and returns concrete
+witnesses/obligations.
+
+## P0 fragments
+
+- **Fragment A — universal relational Horn clauses:** `forall x...: A1 & ... & Am -> B`
+  (premises may be empty, e.g. reflexivity). Covers preorders, partial orders,
+  graph constraints.
+- **Fragment B — universal equations:** `forall x...: t1 = t2`. Covers algebraic
+  theories (semigroups, monoids, groups, rings).
+
+Not yet implemented: `Exists`, `Or`, arbitrary `Not`, full first-order logic.
+
+## Layout
 
 ```text
-LOGAN/
-  src/logical_gans/...
-  applications/logan_modelbuilder/   # this package, or
-  src/logical_gans/modelbuilder/     # integrated package namespace
+core/
+  types.py            # Truth: TRUE / FALSE / UNKNOWN
+  signature.py        # RelationSymbol, FunctionSymbol, ConstantSymbol, Signature
+  terms.py            # Var, Const, Func
+  atoms.py            # RelAtom, EqAtom
+  clauses.py          # HornClause (premises -> conclusion)
+  partial_structure.py# PartialStructure with UNKNOWN cells
+  eval.py             # three-valued bounded evaluator
+  devil.py            # deterministic exhaustive checker -> Witness
+  generator.py        # monotone-fill generator
+  witness.py          # replayable Witness
+examples/
+  preorder.py         # R/2: reflexive + transitive; antisymmetry refutation
+  semigroup.py        # mul/2: associativity
+fixtures/
+  known_groups.py     # hand-written Cayley tables — sanity fixtures only,
+                      # NOT the builder
+cli.py
 ```
-
-The first implemented arena is finite group theory via Cayley-table synthesis and witness-guided checking.
-
-## What it does now
-
-- Builds concrete finite group models: cyclic groups `C_n`, Klein four `V_4`, and dihedral groups `D_m` of order `2m`.
-- Checks group axioms by explicit LOGAN witnesses: associativity triples, identity failures, inverse failures.
-- Finds counterexamples to candidate mathematical claims, currently:
-  - `all finite groups are abelian` using `D_3` / `S_3`.
-- Emits JSON-style certificates/witnesses for model and countermodel runs.
 
 ## Quick start
 
 ```bash
-python -m pip install -e .[dev]
-pytest -q
-logan-modelbuilder build-group --kind cyclic --n 5
-logan-modelbuilder counterexample --claim all_groups_abelian --max-order 8
-python experiments/e1_groups.py --out results_groups.jsonl
+PYTHONPATH=src python -m logical_gans.modelbuilder.cli synthesize-preorder --n 3
+PYTHONPATH=src python -m logical_gans.modelbuilder.cli refute-preorder-antisymmetry
+PYTHONPATH=src python -m logical_gans.modelbuilder.cli synthesize-semigroup --n 1
+pytest -q tests/test_core_preorder.py tests/test_core_semigroup.py
 ```
 
-## Design
+Each command prints JSON with `status`, the resulting `structure`, and a
+`trace`/`witness`.
 
-LOGAN separates three roles:
+## Roles
 
-- **Builder** proposes or repairs a finite structure.
-- **Opponent / Devil** probes it with bounded challenges and returns small witnesses.
-- **Judge** turns the result into a model certificate, counterexample certificate, or failure trace.
+- **Generator** fills unknown interpretation cells (monotone, no revision yet).
+- **Devil (Opponent)** probes bounded axiom instances and returns witnesses
+  (a `failed` violation) or obligations (an `unknown` cell to discharge).
 
-A model is therefore not just an object satisfying axioms silently. It is an object that survives a bounded attack surface and carries a witness/certificate trace explaining what was checked.
-
-## Next domains
-
-- finite monoids and semigroups;
-- relational structures / graphs with EF probes;
-- finite arithmetic fragments;
-- Lean/JSON export of witnesses.
+Known finite groups (`C_n`, `V_4`, `D_m`) are kept only under `fixtures/` as
+regression sanity checks — they are not the model builder.

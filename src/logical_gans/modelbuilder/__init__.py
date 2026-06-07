@@ -1,19 +1,28 @@
-"""LOGAN ModelBuilder: adversarial finite model and countermodel synthesis."""
+"""LOGAN ModelBuilder: a bounded partial finite-model generation kernel.
 
-from .structures import FiniteMagma
-from .theories.groups import (
-    build_cyclic_group,
-    build_klein_four_group,
-    build_dihedral_group,
-    verify_group,
-    find_counterexample_all_groups_abelian,
-)
+Given a signature, a finite domain bound, and axioms in a restricted
+fragment (universal Horn clauses + universal equations), the Generator
+fills unknown interpretation tables while the Devil checks bounded axiom
+instances and returns witnesses/obligations.
+
+This package is stdlib-only and does not import torch.
+"""
+from .core.clauses import HornClause
+from .core.devil import DevilResult, run_devil
+from .core.generator import GenerateResult, generate
+from .core.partial_structure import PartialStructure
+from .core.signature import Signature
+from .core.types import Truth
+from .core.witness import Witness
 
 __all__ = [
-    "FiniteMagma",
-    "build_cyclic_group",
-    "build_klein_four_group",
-    "build_dihedral_group",
-    "verify_group",
-    "find_counterexample_all_groups_abelian",
+    "Truth",
+    "Signature",
+    "PartialStructure",
+    "HornClause",
+    "Witness",
+    "DevilResult",
+    "run_devil",
+    "GenerateResult",
+    "generate",
 ]
