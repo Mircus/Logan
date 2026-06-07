@@ -1,13 +1,11 @@
 """A deliberately simple, generic, monotone-fill generator.
 
 It repeatedly asks the Devil for the first non-OK clause instance and
-fills exactly one UNKNOWN cell to make progress:
-
-* conclusion relation UNKNOWN  -> set that relation cell TRUE
-* premise relation UNKNOWN     -> set that relation cell FALSE (discharge
-                                  the clause vacuously, monotone)
-* an equality/relation term has an UNKNOWN function/constant cell
-                               -> fill it with the smallest domain element
+fills exactly one UNKNOWN cell to make progress. *What* truth value an
+UNKNOWN premise relation gets, and which domain element fills an unknown
+function/constant cell, is delegated to a ``BuilderPolicy`` (default
+``SparseHornPolicy``: UNKNOWN premise -> FALSE). This keeps the Devil's
+three-valued *semantics* separate from the Builder's construction *policy*.
 
 It never revises a known cell. It returns SATISFIED, UNSAT (with the
 failing witness), or UNKNOWN if it can make no monotone progress.
@@ -27,8 +25,9 @@ except ImportError:  # pragma: no cover
 from .atoms import EqAtom, RelAtom
 from .clauses import HornClause
 from .devil import DevilResult, run_devil
-from .eval import eval_term
+from .eval import eval_atom, eval_term
 from .partial_structure import PartialStructure
+from .policy import BuilderPolicy, DEFAULT_POLICY
 from .terms import Const, Func, Term
 from .types import Truth
 
@@ -38,6 +37,7 @@ class GenerateResult:
     status: str  # "satisfied" | "unsat" | "unknown"
     structure: PartialStructure
     trace: List[dict] = field(default_factory=list)
+    policy: str = ""
 
 
 def _find_unknown_cell_in_term(
@@ -65,56 +65,57 @@ def _find_unknown_cell_in_term(
     return None  # Var: nothing to fill
 
 
-def _fill_cell(structure: PartialStructure, cell, trace: List[dict]) -> bool:
+def _fill_cell(structure: PartialStructure, cell, trace: List[dict], fill_value: int) -> bool:
     kind, name, argvals = cell
-    value = structure.domain[0]  # smallest domain element
     if kind == "const":
-        structure.set_constant(name, value)
-        trace.append({"event": "edit", "action": "set_constant", "constant": name, "value": value})
+        structure.set_constant(name, fill_value)
+        trace.append({"event": "edit", "action": "set_constant", "constant": name, "value": fill_value})
     else:
-        structure.set_function(name, argvals, value)
+        structure.set_function(name, argvals, fill_value)
         trace.append(
             {"event": "edit", "action": "set_function", "function": name,
-             "args": list(argvals), "value": value}
+             "args": list(argvals), "value": fill_value}
         )
     return True
 
 
-def _fill_term_unknowns(structure, terms, assignment, trace) -> bool:
+def _fill_term_unknowns(structure, terms, assignment, trace, fill_value) -> bool:
     for term in terms:
         cell = _find_unknown_cell_in_term(structure, term, assignment)
         if cell is not None:
-            return _fill_cell(structure, cell, trace)
+            return _fill_cell(structure, cell, trace, fill_value)
     return False
 
 
-def _make_progress(structure: PartialStructure, result: DevilResult, trace: List[dict]) -> bool:
+def _make_progress(
+    structure: PartialStructure, result: DevilResult, trace: List[dict], policy: BuilderPolicy
+) -> bool:
     clause = result.clause
     assignment = result.assignment
     witness = result.witness
     assert clause is not None and assignment is not None and witness is not None
+    fill_value = policy.fill_value(structure)
 
     # Case A: an UNKNOWN premise blocked the instance (conclusion not reached).
     if witness.conclusion_value is None:
         for prem in clause.premises:
-            from .eval import eval_atom
-
             if eval_atom(prem, assignment, structure) is not Truth.UNKNOWN:
                 continue
             if isinstance(prem, RelAtom):
                 args = tuple(eval_term(a, assignment, structure) for a in prem.args)
                 if any(v is None for v in args):
-                    if _fill_term_unknowns(structure, prem.args, assignment, trace):
+                    if _fill_term_unknowns(structure, prem.args, assignment, trace, fill_value):
                         return True
                     continue
-                structure.set_relation(prem.relation, args, Truth.FALSE)
+                value = policy.unknown_premise_value(structure, prem.relation, args, assignment)
+                structure.set_relation(prem.relation, args, value)
                 trace.append(
-                    {"event": "edit", "action": "set_relation_false",
-                     "relation": prem.relation, "args": list(args)}
+                    {"event": "edit", "action": "set_relation", "relation": prem.relation,
+                     "args": list(args), "value": value.value, "policy": policy.name}
                 )
                 return True
             # EqAtom premise: fill an unknown function/constant cell it touches.
-            if _fill_term_unknowns(structure, (prem.left, prem.right), assignment, trace):
+            if _fill_term_unknowns(structure, (prem.left, prem.right), assignment, trace, fill_value):
                 return True
         return False
 
@@ -123,22 +124,28 @@ def _make_progress(structure: PartialStructure, result: DevilResult, trace: List
     if isinstance(concl, RelAtom):
         args = tuple(eval_term(a, assignment, structure) for a in concl.args)
         if any(v is None for v in args):
-            return _fill_term_unknowns(structure, concl.args, assignment, trace)
+            return _fill_term_unknowns(structure, concl.args, assignment, trace, fill_value)
+        # A TRUE conclusion is forced (anything else fails the clause), so this
+        # is not a policy choice.
         structure.set_relation(concl.relation, args, Truth.TRUE)
         trace.append(
-            {"event": "edit", "action": "set_relation_true",
-             "relation": concl.relation, "args": list(args)}
+            {"event": "edit", "action": "set_relation", "relation": concl.relation,
+             "args": list(args), "value": Truth.TRUE.value, "forced": True}
         )
         return True
     # EqAtom conclusion: fill an unknown function/constant cell it touches.
-    return _fill_term_unknowns(structure, (concl.left, concl.right), assignment, trace)
+    return _fill_term_unknowns(structure, (concl.left, concl.right), assignment, trace, fill_value)
 
 
 def generate(
-    structure: PartialStructure, clauses: List[HornClause], max_steps: int = 1000
+    structure: PartialStructure,
+    clauses: List[HornClause],
+    max_steps: int = 1000,
+    policy: Optional[BuilderPolicy] = None,
 ) -> GenerateResult:
+    policy = policy if policy is not None else DEFAULT_POLICY()
     structure = structure.copy()
-    trace: List[dict] = []
+    trace: List[dict] = [{"event": "start", "policy": policy.name}]
     for step in range(max_steps):
         result = run_devil(structure, clauses)
         trace.append(
@@ -147,15 +154,15 @@ def generate(
         )
         if result.status == "ok":
             trace.append({"event": "result", "status": "satisfied"})
-            return GenerateResult("satisfied", structure, trace)
+            return GenerateResult("satisfied", structure, trace, policy.name)
         if result.status == "failed":
             trace.append({"event": "witness", "witness": result.witness.to_json()})
             trace.append({"event": "result", "status": "unsat"})
-            return GenerateResult("unsat", structure, trace)
-        # UNKNOWN: try to make one monotone fill of progress.
+            return GenerateResult("unsat", structure, trace, policy.name)
+        # UNKNOWN: try to make one monotone fill of progress, per policy.
         trace.append({"event": "obligation", "witness": result.witness.to_json()})
-        if not _make_progress(structure, result, trace):
+        if not _make_progress(structure, result, trace, policy):
             trace.append({"event": "result", "status": "unknown"})
-            return GenerateResult("unknown", structure, trace)
+            return GenerateResult("unknown", structure, trace, policy.name)
     trace.append({"event": "result", "status": "unknown"})
-    return GenerateResult("unknown", structure, trace)
+    return GenerateResult("unknown", structure, trace, policy.name)

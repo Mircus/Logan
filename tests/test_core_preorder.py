@@ -7,6 +7,7 @@ from logical_gans.modelbuilder.core.atoms import EqAtom, RelAtom
 from logical_gans.modelbuilder.core.eval import eval_atom, eval_term
 from logical_gans.modelbuilder.core.generator import generate
 from logical_gans.modelbuilder.core.partial_structure import PartialStructure
+from logical_gans.modelbuilder.core.policy import MaximalHornPolicy, SparseHornPolicy
 from logical_gans.modelbuilder.core.signature import Signature
 from logical_gans.modelbuilder.core.terms import Func, Var
 from logical_gans.modelbuilder.core.types import Truth
@@ -63,6 +64,29 @@ def test_preorder_generation_n3_succeeds():
         assert result.structure.get_relation("R", (i, i)) is Truth.TRUE
     # no UNKNOWN cells remain in a satisfied structure
     assert result.structure.unknown_relation_cells() == []
+
+
+def test_policy_default_is_sparse_identity_preorder():
+    result = generate(empty_preorder_structure(3), preorder_clauses())
+    assert result.status == "satisfied"
+    assert result.policy == "sparse_horn"
+    # sparse policy -> identity preorder: off-diagonal all FALSE
+    for i in range(3):
+        for j in range(3):
+            expected = Truth.TRUE if i == j else Truth.FALSE
+            assert result.structure.get_relation("R", (i, j)) is expected
+
+
+def test_policy_is_replaceable_maximal_gives_total_preorder():
+    result = generate(
+        empty_preorder_structure(3), preorder_clauses(), policy=MaximalHornPolicy()
+    )
+    assert result.status == "satisfied"
+    assert result.policy == "maximal_horn"
+    # maximal policy -> total preorder: every pair related
+    for i in range(3):
+        for j in range(3):
+            assert result.structure.get_relation("R", (i, j)) is Truth.TRUE
 
 
 def test_preorder_antisymmetry_counterexample_witness():

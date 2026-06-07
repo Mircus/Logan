@@ -11,6 +11,12 @@ from .core.clauses import HornClause
 from .core.devil import DevilResult, run_devil
 from .core.generator import GenerateResult, generate
 from .core.partial_structure import PartialStructure
+from .core.policy import (
+    BuilderPolicy,
+    MaximalHornPolicy,
+    SparseHornPolicy,
+    get_policy,
+)
 from .core.signature import Signature
 from .core.types import Truth
 from .core.witness import Witness
@@ -25,4 +31,8 @@ __all__ = [
     "run_devil",
     "GenerateResult",
     "generate",
+    "BuilderPolicy",
+    "SparseHornPolicy",
+    "MaximalHornPolicy",
+    "get_policy",
 ]
