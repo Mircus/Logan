@@ -18,8 +18,12 @@ dependencies = [
   "tqdm",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [project.scripts]
 logical-gans-repro = "logical_gans.repro:main"
+logan-modelbuilder = "logical_gans.modelbuilder.cli:main"

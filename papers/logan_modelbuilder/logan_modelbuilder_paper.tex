@@ -1,0 +1,418 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}{Example}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{remark}{Remark}[section]
+\newtheorem{theorem}{Theorem}[section]
+
+\newcommand{\LOGAN}{\textsc{LOGAN}}
+\newcommand{\Builder}{\ensuremath{\mathsf{Builder}}}
+\newcommand{\Opponent}{\ensuremath{\mathsf{Opponent}}}
+\newcommand{\Judge}{\ensuremath{\mathsf{Judge}}}
+\newcommand{\Cert}{\ensuremath{\mathsf{Cert}}}
+\newcommand{\Obl}{\ensuremath{\mathsf{Obl}}}
+\newcommand{\Str}{\ensuremath{\mathsf{Str}}}
+\newcommand{\Wit}{\ensuremath{\mathsf{Wit}}}
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\T}{\mathcal{T}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\modelslog}{\Vdash}
+
+\title{\LOGAN{} as a Model and Countermodel Builder\\
+\large Bounded Adversarial Synthesis for Finite Mathematical Structures}
+\author{Mirco A. Mannucci\\HoloMathics LLC\\\texttt{mirco@holomathics.com}}
+\date{Draft: June 7, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Most current machine assistance for mathematics is syntactic: it proposes statements, searches for proofs, or interacts with proof assistants.  This paper develops a complementary model-side workflow.  We show how \LOGAN{}---Logical GANs based on bounded logical games---can be used to build concrete finite models and countermodels.  A \Builder{} proposes a finite structure; an \Opponent{} probes it with bounded logical challenges; and a \Judge{} records either a model certificate or a counterexample certificate.  The primitive output is not only a yes/no answer but a small witness: an associativity triple, an identity failure, an inverse failure, a commutativity failure, an EF transcript, or another replayable object.  The first implemented arena is finite group theory via Cayley-table synthesis.  We give the formal interface, a witness-guided CEGIS loop, examples of models and countermodels, and a companion sub-repository layout with tests.  The resulting system is intended as the model-building flank of AI-assisted mathematics: not replacing proof assistants, but supplying finite witnesses, sanity checks, semantic profiles, and counterexamples before proof search hardens a conjecture into a theorem.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}
+
+The standard story of AI-assisted mathematics is still heavily proof-centered.  A language model proposes a lemma; a proof assistant checks a derivation; a human decides whether the result is meaningful.  This is powerful, but incomplete.  Mathematicians do not only prove.  They also build examples, test definitions, search for pathological cases, inspect finite shadows, and ask whether a theory has the intended models.
+
+This paper develops the model-building side of \LOGAN{}.  The central idea is simple:
+\begin{quote}
+A mathematical object is accepted, for a given budget, if it survives the right bounded adversarial probes; a false conjecture is rejected by producing a small, replayable countermodel witness.
+\end{quote}
+
+The workflow has three roles.
+\begin{itemize}[leftmargin=2em]
+  \item \Builder{} proposes a finite structure: a Cayley table, graph, finite algebra, arithmetic fragment, or partial model.
+  \item \Opponent{} probes the object with depth-bounded logical challenges.
+  \item \Judge{} emits a certificate: model survived, model failed with witnesses, or counterexample to a proposed claim.
+\end{itemize}
+
+The conceptual ancestor is the original \LOGAN{} framework, where a bounded logical observer is implemented through Ehrenfeucht--Fra\"iss\'e style games and returns interpretable witnesses.  The present paper turns that idea toward mathematical construction: groups, graphs, arithmetic fragments, and eventually finite categories or other algebraic gadgets.
+
+\paragraph{The first showcase: finite groups.}
+The companion sub-repository implements a first arena: finite group theory via Cayley tables.  The \Builder{} can construct cyclic groups, the Klein four group, and dihedral groups.  The \Opponent{} checks associativity, identity, inverses, and optional commutativity.  The \Judge{} can certify that a table is a group or produce a counterexample certificate to the claim that all finite groups are abelian.
+
+\paragraph{What this is not.}
+The goal is not to claim that a bounded finite search proves a general theorem.  The goal is to add a missing semantic instrument to the mathematical workflow: a system that constructs, attacks, repairs, and explains finite models and countermodels with explicit witnesses.
+
+\section{The LOGAN Model-Building Interface}
+
+\subsection{Structures, theories, and attack surfaces}
+
+Fix a finite signature \(\Sigma\).  In the first implementation, \(\Sigma = \{\cdot,e,{}^{-1}\}\) for group theory.  More generally \(\Sigma\) may contain relation symbols, function symbols, constants, or typed operations.
+
+\begin{definition}[Finite candidate structure]
+A finite candidate \(\Sigma\)-structure \(A\) consists of a finite domain \(|A|\), interpretations of relation symbols as finite tables, and interpretations of function symbols as total or partial finite maps.  In the group-theory case, \(A\) is represented by a Cayley table
+\[
+  m_A : |A| \times |A| \to |A|
+\]
+with a distinguished identity candidate \(e_A\).
+\end{definition}
+
+\begin{definition}[Attack surface]
+Given a theory \(T\) and a depth parameter \(k\), an attack surface \(\C_k(T)\) is a finite or effectively enumerable collection of bounded challenges.  Each challenge asks whether a bounded instance of an axiom, property, or comparison game is satisfied by \(A\).
+\end{definition}
+
+For universal Horn theories, a challenge is usually a tuple.  For example, group associativity is attacked by choosing \((x,y,z)\) and checking
+\[
+  (x\cdot y)\cdot z = x\cdot (y\cdot z).
+\]
+If the equation fails, the tuple itself is a witness.
+
+\subsection{Witnesses}
+
+\begin{definition}[LOGAN witness]
+A \LOGAN{} witness is a small, replayable object certifying a failed challenge.  Formally it is a tuple
+\[
+  w = (\mathsf{kind}, \mathsf{payload}, \mathsf{message}),
+\]
+where \(\mathsf{kind}\) names the failure class, \(\mathsf{payload}\) contains the data needed to replay the failure, and \(\mathsf{message}\) gives a human-readable explanation.
+\end{definition}
+
+\begin{example}[Associativity witness]
+For a Cayley table \(m\), an associativity witness has the form
+\[
+  w = (\mathsf{assoc}, x,y,z, m(m(x,y),z), m(x,m(y,z))).
+\]
+It is valid exactly when the two reported values differ.
+\end{example}
+
+\begin{example}[Commutativity counterexample]
+To refute ``all groups are abelian'', it is enough to provide a group \(A\) and a pair \((x,y)\) such that
+\[
+  x\cdot y \neq y\cdot x.
+\]
+The counterexample certificate must also record that \(A\) passed the group axioms.
+\end{example}
+
+\subsection{The LOGAN game for model building}
+
+\begin{definition}[LOGAN model-building game]
+A position is a tuple
+\[
+  (A,\Cert,\Obl,t),
+\]
+where \(A\) is the current finite or partial structure, \(\Cert\) is a store of validated facts, \(\Obl\) is a store of existential obligations still to be discharged, and \(t\) is the used budget.  In each round:
+\begin{enumerate}[leftmargin=2em]
+  \item \Opponent{} chooses a challenge \(c\in \C_k(T)\), subject to total budget \(b\).
+  \item If \(c\) fails, \Opponent{} returns a witness \(w\).
+  \item \Builder{} either repairs \(A\), extends \(A\), or concedes failure.
+  \item \Judge{} updates certificates and logs the trace.
+\end{enumerate}
+\end{definition}
+
+\begin{definition}[Bounded LOGAN model]
+We write
+\[
+  A \modelslog_{k,b} T
+\]
+when \Builder{} has a strategy that survives all \Opponent{} challenges from \(\C_k(T)\) up to budget \(b\), while preserving its certificate discipline.
+\end{definition}
+
+This is deliberately weaker than classical satisfaction.  It is an operational notion: \(A\) survived a specified adversarial attack surface.
+
+\section{Model Certificates and Counterexample Certificates}
+
+\subsection{Model certificates}
+
+A model certificate records:
+\begin{itemize}[leftmargin=2em]
+  \item the structure name and representation;
+  \item the theory or property suite challenged;
+  \item the depth and budget used;
+  \item all witness classes checked;
+  \item the fact that no failing witness was found.
+\end{itemize}
+
+In the finite group setting, a cyclic group \(C_n\) is certified by checking associativity, identity, and inverses over its Cayley table.  For a total table the check can be exhaustive; for a larger or partial structure it can be sampled or budgeted.
+
+\subsection{Counterexample certificates}
+
+A counterexample certificate to a claim
+\[
+  T \Rightarrow \varphi
+\]
+records:
+\begin{itemize}[leftmargin=2em]
+  \item a structure \(A\);
+  \item a certificate that \(A\) satisfies or survives the assumptions \(T\);
+  \item a witness \(w\) showing that \(\varphi\) fails in \(A\).
+\end{itemize}
+
+For example, to refute ``all finite groups are abelian'', \LOGAN{} returns a dihedral group \(D_3\) of order six, verifies the group axioms, then returns a pair \((x,y)\) witnessing non-commutativity.
+
+\section{CEGIS: Witness-Guided Synthesis}
+
+The implementation follows a CounterExample-Guided Inductive Synthesis pattern.  The difference is that the counterexamples are mathematical witnesses rather than ordinary test failures.
+
+\begin{algorithm}[h]
+\caption{LOGAN ModelBuilder}
+\begin{algorithmic}[1]
+\Require theory \(T\), depth \(k\), budget \(b\), builder policy \(\pi\), opponent policy \(\delta\)
+\State initialize candidate structure \(A_0\)
+\State initialize \(\Cert\gets\varnothing\), \(\Obl\gets\varnothing\), trace \(\tau\gets []\)
+\For{iteration \(i=1,\dots,N\)}
+  \State \(W,D \gets \Opponent_\delta(A_i,T,k,b)\)
+  \If{\(W=\varnothing\) and \(D=\varnothing\)}
+    \State \Return model certificate for \(A_i\)
+  \EndIf
+  \State append \(W,D\) to trace \(\tau\)
+  \State \(A_{i+1}\gets \Builder_\pi(A_i,W,D,\Cert)\)
+  \State update \(\Cert\) with replayable validated facts
+\EndFor
+\State \Return failure or unknown with trace \(\tau\)
+\end{algorithmic}
+\end{algorithm}
+
+\section{Finite Groups as the First LOGAN Arena}
+
+\subsection{Signature and axioms}
+
+The group signature is
+\[
+  \Sigma_G = \{\cdot,e,{}^{-1}\}.
+\]
+The first implementation represents the operation by a total Cayley table and treats inverses semantically: an element \(x\) has an inverse when some \(y\) satisfies
+\[
+  x\cdot y = e = y\cdot x.
+\]
+
+The attacked axioms are:
+\begin{align*}
+  (x\cdot y)\cdot z &= x\cdot (y\cdot z), \\
+  e\cdot x &= x = x\cdot e, \\
+  \exists y\,(x\cdot y=e \wedge y\cdot x=e).
+\end{align*}
+
+Optionally, the \Opponent{} also attacks commutativity:
+\[
+  x\cdot y = y\cdot x.
+\]
+This is not a group axiom; it is a target property used to build counterexamples.
+
+\subsection{Implemented builders}
+
+The P0 sub-repository includes deterministic builders for:
+\begin{itemize}[leftmargin=2em]
+  \item cyclic groups \(C_n\), represented by addition modulo \(n\);
+  \item the Klein four group \(V_4\), represented by \(\mathbb{Z}_2\times\mathbb{Z}_2\);
+  \item dihedral groups \(D_m\), represented as pairs \((i,j)\) with multiplication
+  \[
+    (i,j)(k,\ell)=\bigl(i+(-1)^j k \bmod m,\; j+\ell \bmod 2\bigr).
+  \]
+\end{itemize}
+
+\subsection{Implemented opponents}
+
+The P0 opponent is a Horn-style finite group opponent.  It checks the current structure and returns the first replayable witnesses it finds:
+\begin{itemize}[leftmargin=2em]
+  \item \texttt{associativity\_failure};
+  \item \texttt{identity\_failure};
+  \item \texttt{inverse\_failure};
+  \item \texttt{commutativity\_failure}, when commutativity is part of the challenge.
+\end{itemize}
+
+Later versions should make the budget operational by sampling instances, prioritizing hard tuples, and mixing Horn checks with EF probes.
+
+\subsection{Showcase 1: building a model}
+
+Command:
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+logan-modelbuilder build-group --kind cyclic --n 5
+\end{lstlisting}
+
+Expected status:
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+{
+  "status": "survived",
+  "structure": "C_5",
+  "order": 5,
+  "witnesses": []
+}
+\end{lstlisting}
+
+Interpretation: \(C_5\) survives the group-theory attack surface.  In a full paper result table, this becomes a model certificate row.
+
+\subsection{Showcase 2: building a counterexample}
+
+Command:
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+logan-modelbuilder counterexample --claim all_groups_abelian --max-order 8
+\end{lstlisting}
+
+Expected status:
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+{
+  "claim": "all_groups_abelian",
+  "structure_name": "D_3",
+  "structure_order": 6,
+  "assumptions_verified": true,
+  "refuting_witness": {
+    "kind": "commutativity_failure",
+    "payload": {"x": ..., "y": ..., "x*y": ..., "y*x": ...}
+  }
+}
+\end{lstlisting}
+
+Interpretation: \LOGAN{} has not merely guessed that the theorem is false.  It has produced a finite group plus a replayable witness to the negation of the target property.
+
+\section{Repo Architecture}
+
+The companion sub-repository is meant to be integrated into the existing LOGAN repo, but it is packaged so that it can also run independently.
+
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+logan_modelbuilder/
+  pyproject.toml
+  README.md
+  src/logical_gans/modelbuilder/
+    structures.py
+    witnesses.py
+    engine.py
+    cli.py
+    theories/
+      groups.py
+    opponents/
+      horn_group.py
+    builders/
+      group_builder.py
+  experiments/
+    e1_groups.py
+  tests/
+    test_groups.py
+  scripts/
+    run_all.sh
+\end{lstlisting}
+
+\paragraph{Design choice.}
+The namespace \texttt{logical\_gans.modelbuilder} is intentional: this should feel like a LOGAN companion module, not an unrelated new package.
+
+\section{Experimental Plan}
+
+\subsection{P0 experiments}
+
+\begin{center}
+\begin{tabular}{lllll}
+\toprule
+Experiment & Structure & Target & Expected result & Witness type \\
+\midrule
+E1.1 & \(C_n\) & group axioms & survives & none \\
+E1.2 & \(V_4\) & group axioms + abelian & survives & none \\
+E1.3 & \(D_3\) & group axioms & survives & none \\
+E1.4 & \(D_3\) & abelian & fails & commutativity pair \\
+E1.5 & random table & group axioms & fails & assoc/id/inverse \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{P1 experiments}
+
+The next layer should include:
+\begin{itemize}[leftmargin=2em]
+  \item monotone fill of partial Cayley tables;
+  \item local revision with edit costs;
+  \item certificate-preserving repair;
+  \item random and SAT/SMT baselines;
+  \item JSONL traces of witness/repair/certificate events.
+\end{itemize}
+
+\subsection{Metrics}
+
+For each run, record:
+\begin{itemize}[leftmargin=2em]
+  \item pass/fail/unknown;
+  \item number and class of witnesses;
+  \item repair cost;
+  \item certificate growth;
+  \item wall-clock time;
+  \item minimal budget at which a target property fails.
+\end{itemize}
+
+\section{Relation to UCMT}
+
+This paper should be read as the implementation-facing companion to the UCMT line.  UCMT says that bounded modelhood can be formulated as survival against bounded logical challenges.  \LOGAN{} ModelBuilder supplies the computational discipline:
+\begin{itemize}[leftmargin=2em]
+  \item concrete finite structures;
+  \item explicit Opponents;
+  \item small witnesses;
+  \item model and countermodel certificates;
+  \item reproducible traces.
+\end{itemize}
+
+The deeper thesis is that model theory can become operational.  A theory is not only a collection of sentences.  It determines an attack surface.  A model-building system is not only a search routine.  It is an adversarial dialogue between construction and falsification.
+
+\section{Conclusion}
+
+\LOGAN{} ModelBuilder is a model-side mathematical assistant.  It does not replace theorem provers; it supplies the finite semantic evidence that should often come before proof search.  The first group-theory implementation is deliberately modest but already captures the essential pattern: build a structure, attack it, return witnesses, and distinguish model certificates from counterexample certificates.  The next step is to make the builder genuinely repair-oriented, extend the opponent from Horn checks to EF probes, and grow the domain library from groups to monoids, graphs, arithmetic fragments, and finite categories.
+
+\appendix
+
+\section{Claude Development Checklist}
+
+The companion file \texttt{CLAUDE\_ACTION\_LIST.md} gives the implementation checklist.  The highest-priority tasks are: integrate into the existing LOGAN tree, make budgeted challenge sampling real, add partial Cayley-table repair, and generate result tables for the paper.
+
+\begin{thebibliography}{9}
+
+\bibitem{Ehrenfeucht1961}
+A. Ehrenfeucht.
+\newblock An application of games to the completeness problem for formalized theories.
+\newblock \emph{Fundamenta Mathematicae}, 49(2):129--141, 1961.
+
+\bibitem{Fraisse1954}
+R. Fra\"iss\'e.
+\newblock Sur quelques classifications des syst\`emes de relations.
+\newblock \emph{Publications Scientifiques de l'Universit\'e d'Alger}, 1:35--182, 1954.
+
+\bibitem{MannucciLOGAN}
+M. A. Mannucci.
+\newblock Logical GANs: Adversarial learning through Ehrenfeucht--Fra\"iss\'e games.
+\newblock Draft / preprint, 2025.
+
+\bibitem{MannucciUCMT}
+M. A. Mannucci.
+\newblock Ultraconstructive Model Theory via Logic driven Adversarial Synthesis.
+\newblock Draft, 2026.
+
+\bibitem{Alur2018}
+R. Alur, R. Singh, D. Fisman, and A. Solar-Lezama.
+\newblock Search-based program synthesis.
+\newblock \emph{Communications of the ACM}, 61(12):84--93, 2018.
+
+\end{thebibliography}
+
+\end{document}

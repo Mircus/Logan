@@ -1,0 +1,9 @@
+{"status": "survived", "structure": "C_3", "order": 3, "witnesses": []}
+{"status": "survived", "structure": "C_3", "order": 3, "witnesses": []}
+{"status": "survived", "structure": "C_4", "order": 4, "witnesses": []}
+{"status": "survived", "structure": "C_4", "order": 4, "witnesses": []}
+{"status": "survived", "structure": "V_4", "order": 4, "witnesses": []}
+{"status": "survived", "structure": "V_4", "order": 4, "witnesses": []}
+{"status": "survived", "structure": "D_3", "order": 6, "witnesses": []}
+{"status": "failed", "structure": "D_3", "order": 6, "witnesses": [{"kind": "commutativity_failure", "payload": {"x": 1, "y": 3, "x*y": 4, "y*x": 5}, "message": "1*3=4, but 3*1=5"}]}
+{"claim": "all_groups_abelian", "structure_name": "D_3", "structure_order": 6, "assumptions_verified": true, "refuting_witness": {"kind": "commutativity_failure", "payload": {"x": 1, "y": 3, "x*y": 4, "y*x": 5}, "message": "1*3=4, but 3*1=5"}}
