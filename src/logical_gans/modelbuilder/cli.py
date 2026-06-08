@@ -49,6 +49,36 @@ def main(argv: "list[str] | None" = None) -> int:
     p_search.add_argument("--k", type=int, default=None, help="logical/term depth bound")
     p_search.add_argument("--budget", type=int, default=None, help="Devil challenge-instance budget")
 
+    # learned (neural) relation-builder commands
+    p_mkd = sub.add_parser("make-relation-training-data",
+                           help="mine Devil-witness training examples for a binary relation")
+    p_mkd.add_argument("--theory", required=True)
+    p_mkd.add_argument("--relation", required=True)
+    p_mkd.add_argument("--n", type=int, required=True)
+    p_mkd.add_argument("--samples", type=int, default=200)
+    p_mkd.add_argument("--seed", type=int, default=0)
+    p_mkd.add_argument("--k", type=int, default=None)
+    p_mkd.add_argument("--budget", type=int, default=None)
+    p_mkd.add_argument("--out", required=True)
+
+    p_trn = sub.add_parser("train-relation-policy", help="train the relation policy net")
+    p_trn.add_argument("--data", required=True)
+    p_trn.add_argument("--n", type=int, required=True)
+    p_trn.add_argument("--epochs", type=int, default=50)
+    p_trn.add_argument("--lr", type=float, default=1e-3)
+    p_trn.add_argument("--seed", type=int, default=0)
+    p_trn.add_argument("--out", required=True)
+
+    p_nb = sub.add_parser("neural-build-relation",
+                          help="build a binary relation with the neural policy (Devil-verified)")
+    p_nb.add_argument("--theory", required=True)
+    p_nb.add_argument("--relation", required=True)
+    p_nb.add_argument("--n", type=int, required=True)
+    p_nb.add_argument("--model", required=True)
+    p_nb.add_argument("--k", type=int, default=None)
+    p_nb.add_argument("--budget", type=int, default=None)
+    p_nb.add_argument("--max-steps", type=int, default=50)
+
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
     p_ref.add_argument("--claim", required=True)
@@ -94,6 +124,34 @@ def main(argv: "list[str] | None" = None) -> int:
             return _emit({"status": res.status, "n": args.n, "k": args.k, "budget": args.budget,
                           "max_nodes": args.max_nodes, "nodes": res.nodes,
                           "structure": res.structure.to_json(), "trace": res.trace})
+
+        if args.cmd == "make-relation-training-data":
+            from .learned.data import make_relation_training_examples, write_training_examples_jsonl
+
+            theory = load_theory(args.theory)
+            examples = make_relation_training_examples(
+                theory, args.relation, args.n, args.samples,
+                seed=args.seed, k=args.k, budget=args.budget,
+            )
+            write_training_examples_jsonl(examples, args.out)
+            return _emit({"out": args.out, "examples": len(examples),
+                          "relation": args.relation, "n": args.n})
+
+        if args.cmd == "train-relation-policy":
+            from .learned.train import train_relation_policy
+
+            return _emit(train_relation_policy(
+                args.data, args.out, args.n, epochs=args.epochs, lr=args.lr, seed=args.seed,
+            ))
+
+        if args.cmd == "neural-build-relation":
+            from .learned.builder import neural_relation_build
+
+            theory = load_theory(args.theory)
+            return _emit(neural_relation_build(
+                theory, args.relation, args.n, args.model,
+                k=args.k, budget=args.budget, max_steps=args.max_steps,
+            ))
 
         if args.cmd == "refute":
             if args.n is None and args.structure is None:
