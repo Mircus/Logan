@@ -12,6 +12,11 @@ Claim:   {"name": str, "clauses": [<clause>, ...]}
 Struct:  {"domain": [0,...,n-1], "constants": {name: int},
           "relations": {R: [[a,b], ...]},   # listed tuples are TRUE; rest FALSE
           "functions": {f: [[[a,b], value], ...]}}
+
+Loader policy (P0): structures are loaded **closed-world** --- listed
+relation tuples become TRUE and every other tuple over the domain becomes
+FALSE; unspecified function/constant cells remain UNKNOWN (None). A future
+open-world loader will instead leave unlisted relation cells UNKNOWN.
 """
 from __future__ import annotations
 

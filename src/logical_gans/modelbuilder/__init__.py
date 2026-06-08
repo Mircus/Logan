@@ -7,6 +7,7 @@ instances and returns witnesses/obligations.
 
 This package is stdlib-only and does not import torch.
 """
+from .core.backtracking import BacktrackResult, backtracking_generate
 from .core.clauses import HornClause
 from .core.devil import DevilResult, run_devil
 from .core.generator import GenerateResult, generate
@@ -39,6 +40,8 @@ __all__ = [
     "run_devil",
     "GenerateResult",
     "generate",
+    "BacktrackResult",
+    "backtracking_generate",
     "BuilderPolicy",
     "SparseHornPolicy",
     "MaximalHornPolicy",

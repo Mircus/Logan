@@ -40,6 +40,11 @@ def main(argv: "list[str] | None" = None) -> int:
     p_chk.add_argument("--theory", required=True)
     p_chk.add_argument("--structure", required=True)
 
+    p_search = sub.add_parser("search", help="backtracking search for a model of a JSON theory")
+    p_search.add_argument("--theory", required=True)
+    p_search.add_argument("--n", type=int, required=True)
+    p_search.add_argument("--max-nodes", type=int, default=10000)
+
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
     p_ref.add_argument("--claim", required=True)
@@ -74,6 +79,14 @@ def main(argv: "list[str] | None" = None) -> int:
             theory = load_theory(args.theory)
             structure = load_structure(args.structure, theory.signature)
             return _emit(check(theory, structure))
+
+        if args.cmd == "search":
+            from .core.backtracking import backtracking_generate
+
+            theory = load_theory(args.theory)
+            res = backtracking_generate(theory, args.n, max_nodes=args.max_nodes)
+            return _emit({"status": res.status, "nodes": res.nodes,
+                          "structure": res.structure.to_json(), "trace": res.trace})
 
         if args.cmd == "refute":
             if args.n is None and args.structure is None:
