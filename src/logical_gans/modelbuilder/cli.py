@@ -91,6 +91,19 @@ def main(argv: "list[str] | None" = None) -> int:
     p_mcts.add_argument("--budget", type=int, default=None)
     p_mcts.add_argument("--rollouts", type=int, default=100)
     p_mcts.add_argument("--c-puct", type=float, default=1.5)
+    p_mcts.add_argument("--llm-prior", default=None,
+                        help="optional LLM prior hook, e.g. mock:first_true / mock:witness_match")
+
+    p_llm = sub.add_parser("llm-propose-relation",
+                           help="ask a (mock) LLM for relation edits and validate them")
+    p_llm.add_argument("--theory", required=True)
+    p_llm.add_argument("--relation", required=True)
+    p_llm.add_argument("--n", type=int, required=True)
+    p_llm.add_argument("--seed", default=None, help="open-world seed structure JSON")
+    p_llm.add_argument("--k", type=int, default=None)
+    p_llm.add_argument("--budget", type=int, default=None)
+    p_llm.add_argument("--mock", default="witness_match",
+                       choices=["first_true", "first_false", "witness_match"])
 
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
@@ -183,11 +196,57 @@ def main(argv: "list[str] | None" = None) -> int:
             seed_structure = (
                 load_seed_open_world(args.seed, theory.signature) if args.seed else None
             )
+            llm_prior = None
+            if args.llm_prior:
+                if not args.llm_prior.startswith("mock:"):
+                    parser.error("--llm-prior must look like mock:<strategy>")
+                from .learned.mock_llm import mock_llm_prior
+                llm_prior = mock_llm_prior(args.llm_prior.split(":", 1)[1])
             return _emit(mcts_relation_build(
                 theory, args.relation, args.n, model_path=args.model,
                 seed_structure=seed_structure, k=args.k, budget=args.budget,
-                rollouts=args.rollouts, c_puct=args.c_puct,
+                rollouts=args.rollouts, c_puct=args.c_puct, llm_prior=llm_prior,
             ))
+
+        if args.cmd == "llm-propose-relation":
+            from .learned.llm_protocol import (
+                build_llm_input,
+                edit_to_dict,
+                parse_llm_output,
+                validate_llm_actions,
+            )
+            from .learned.actions import legal_relation_edits
+            from .learned.mock_llm import mock_llm_json
+            from .core.devil import run_devil_bounded
+            from .core.partial_structure import PartialStructure
+
+            theory = load_theory(args.theory)
+            structure = (
+                load_seed_open_world(args.seed, theory.signature) if args.seed
+                else PartialStructure.empty(theory.signature, args.n)
+            )
+            result = run_devil_bounded(structure, theory.clauses, k=args.k, budget=args.budget)
+            allowed = legal_relation_edits(structure, args.relation)
+            llm_input = build_llm_input(theory, args.relation, structure, result.witness,
+                                        k=args.k, budget=args.budget)
+            text = mock_llm_json(args.mock, allowed, result.witness)
+            output = parse_llm_output(text)
+            plan = validate_llm_actions(output, allowed)
+            return _emit({
+                "mock_strategy": args.mock,
+                "goal": llm_input.goal,
+                "allowed_actions": [edit_to_dict(e) for e in allowed],
+                "proposed_actions": [
+                    {"kind": a.kind, "relation": a.relation,
+                     "args": list(a.args) if a.args else None, "value": a.value}
+                    for a in output.proposed_actions
+                ],
+                "explanation_ignored": output.explanation,
+                "validation": {
+                    "validated": [edit_to_dict(e) for e in plan.validated],
+                    "rejected": plan.rejected,
+                },
+            })
 
         if args.cmd == "refute":
             if args.n is None and args.structure is None:

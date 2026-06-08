@@ -34,14 +34,14 @@ def _reward(result) -> float:
     return 0.0  # unknown
 
 
-def _action_priors(structure, relation, result, model, n) -> dict:
+def _base_priors(structure, relation, result, model, n) -> dict:
     if model is None:
         return {"false": 0.5, "true": 0.5}
     import torch
 
     from .encoding import encode_state
 
-    i, j = result_cell = _decision_cell(structure, result)[2]
+    i, j = _decision_cell(structure, result)[2]
     x = encode_state(structure, relation, result.witness).unsqueeze(0)
     with torch.no_grad():
         logits = model(x).squeeze(0)
@@ -51,6 +51,22 @@ def _action_priors(structure, relation, result, model, n) -> dict:
     ef, et = math.exp(lf - m), math.exp(lt - m)
     s = ef + et
     return {"false": ef / s, "true": et / s}
+
+
+def _action_priors(structure, relation, result, model, n, llm_prior=None) -> dict:
+    priors = _base_priors(structure, relation, result, model, n)
+    if llm_prior is None:
+        return priors
+    # Untrusted LLM hook: boost an allowed, on-obligation suggestion; ignore the rest.
+    cell = _decision_cell(structure, result)
+    suggestion = llm_prior(structure, relation, result)
+    if suggestion is not None and cell is not None and suggestion.args == cell[2]:
+        key = "true" if suggestion.value is Truth.TRUE else "false"
+        boosted = {"false": priors["false"], "true": priors["true"]}
+        boosted[key] += 1.0
+        total = boosted["false"] + boosted["true"]
+        priors = {k: v / total for k, v in boosted.items()}
+    return priors
 
 
 class _Node:
@@ -73,7 +89,7 @@ class _Node:
         self.expanded = False
 
 
-def _evaluate(node, theory, relation, k, budget, model, n):
+def _evaluate(node, theory, relation, k, budget, model, n, llm_prior=None):
     result = run_devil_bounded(node.structure, theory.clauses, k=k, budget=budget)
     node.devil_status = result.status
     node.reward = _reward(result)
@@ -86,7 +102,7 @@ def _evaluate(node, theory, relation, k, budget, model, n):
         node.reward = 0.0
         return
     node.obligation = cell
-    node.priors = _action_priors(node.structure, relation, result, model, n)
+    node.priors = _action_priors(node.structure, relation, result, model, n, llm_prior)
 
 
 def _expand(node, relation):
@@ -115,6 +131,7 @@ def mcts_relation_build(
     rollouts: int = 100,
     c_puct: float = 1.5,
     seed: int = 0,
+    llm_prior=None,
 ) -> dict:
     model = None
     if model_path is not None:
@@ -127,7 +144,7 @@ def mcts_relation_build(
     start = seed_structure.copy() if seed_structure is not None \
         else PartialStructure.empty(theory.signature, n)
     root = _Node(start, None, None)
-    _evaluate(root, theory, relation, k, budget, model, n)
+    _evaluate(root, theory, relation, k, budget, model, n, llm_prior)
     nodes = 1
     best_node = root if root.devil_status == "ok" else None
 
@@ -138,7 +155,7 @@ def mcts_relation_build(
             key, node = max(node.children.items(),
                             key=lambda kv: _puct(node, kv[0], kv[1], c_puct))
             if node.devil_status is None:
-                _evaluate(node, theory, relation, k, budget, model, n)
+                _evaluate(node, theory, relation, k, budget, model, n, llm_prior)
                 nodes += 1
                 break
         # expansion (one ply)
@@ -187,6 +204,7 @@ def mcts_relation_build(
         "status": status,
         "builder": "mcts_relation",
         "uses_neural_policy": model is not None,
+        "uses_llm_prior": llm_prior is not None,
         "relation": relation,
         "n": n,
         "k": k,
