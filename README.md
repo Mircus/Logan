@@ -29,6 +29,23 @@
 
 ---
 
+## LOGAN-ModelBuilder experimental subpackage
+
+A symbolic **bounded partial finite-model generator** lives at:
+
+```text
+src/logical_gans/modelbuilder/
+```
+
+It is independent of torch and currently supports universal **Horn/equational
+P0 theory packs** (theories, claims, and structures as JSON data). It fills
+unknown interpretation tables while a three-valued *Devil* probes bounded axiom
+instances. See `docs/modelbuilder_architecture.md`,
+`docs/modelbuilder_output_schema.md`, and
+`docs/modelbuilder_v0_1_walkthrough.md`. Status: `v0.1.0-alpha`.
+
+---
+
 ## Quick Start
 
 ### Installation

@@ -1,0 +1,17 @@
+{
+  "name": "simple_graph",
+  "_comment": "Undirected graph: only the symmetric axiom is honestly expressible in the P0 Horn fragment. Irreflexivity / triangle-free need negation (Not), which P0 does not have, so they are intentionally omitted.",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [],
+    "constants": []
+  },
+  "clauses": [
+    {
+      "name": "symmetric",
+      "variables": ["x", "y"],
+      "premises": [{"rel": "E", "args": [{"var": "x"}, {"var": "y"}]}],
+      "conclusion": {"rel": "E", "args": [{"var": "y"}, {"var": "x"}]}
+    }
+  ]
+}

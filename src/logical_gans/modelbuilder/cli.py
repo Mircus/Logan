@@ -76,8 +76,9 @@ def main(argv: "list[str] | None" = None) -> int:
         if args.cmd == "synthesize":
             theory = load_theory(args.theory)
             res = synthesize(theory, args.n, get_policy(args.policy), k=args.k, budget=args.budget)
-            return _emit({"status": res.status, "policy": res.policy,
-                          "structure": res.structure.to_json(), "trace": res.trace})
+            return _emit({"status": res.status, "n": args.n, "k": args.k, "budget": args.budget,
+                          "policy": res.policy, "structure": res.structure.to_json(),
+                          "trace": res.trace})
 
         if args.cmd == "check":
             theory = load_theory(args.theory)
@@ -90,7 +91,8 @@ def main(argv: "list[str] | None" = None) -> int:
             theory = load_theory(args.theory)
             res = backtracking_generate(theory, args.n, k=args.k, budget=args.budget,
                                         max_nodes=args.max_nodes)
-            return _emit({"status": res.status, "nodes": res.nodes,
+            return _emit({"status": res.status, "n": args.n, "k": args.k, "budget": args.budget,
+                          "max_nodes": args.max_nodes, "nodes": res.nodes,
                           "structure": res.structure.to_json(), "trace": res.trace})
 
         if args.cmd == "refute":
@@ -102,8 +104,11 @@ def main(argv: "list[str] | None" = None) -> int:
                 load_structure(args.structure, theory.signature)
                 if args.structure else None
             )
-            return _emit(refute(theory, claim, n=args.n, structure=structure,
-                                policy=get_policy(args.policy)))
+            out = refute(theory, claim, n=args.n, structure=structure,
+                         policy=get_policy(args.policy))
+            out["n"] = args.n
+            out["policy"] = args.policy
+            return _emit(out)
 
         if args.cmd == "synthesize-preorder":
             theory = load_theory(_repo_root() / "examples" / "theories" / "preorder.json")

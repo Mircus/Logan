@@ -7,6 +7,8 @@ instances and returns witnesses/obligations.
 
 This package is stdlib-only and does not import torch.
 """
+__version__ = "0.1.0-alpha"
+
 from .core.backtracking import BacktrackResult, backtracking_generate
 from .core.clauses import HornClause
 from .core.depth import atom_depth, clause_depth, term_depth
@@ -32,6 +34,7 @@ from .core.types import Truth
 from .core.witness import Witness
 
 __all__ = [
+    "__version__",
     "Truth",
     "Signature",
     "PartialStructure",
