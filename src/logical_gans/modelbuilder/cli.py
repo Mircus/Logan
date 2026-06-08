@@ -80,6 +80,18 @@ def main(argv: "list[str] | None" = None) -> int:
     p_nb.add_argument("--budget", type=int, default=None)
     p_nb.add_argument("--max-steps", type=int, default=50)
 
+    p_mcts = sub.add_parser("mcts-relation",
+                            help="MCTS over relation edits (optional neural priors), Devil-verified")
+    p_mcts.add_argument("--theory", required=True)
+    p_mcts.add_argument("--relation", required=True)
+    p_mcts.add_argument("--n", type=int, required=True)
+    p_mcts.add_argument("--seed", default=None, help="open-world seed structure JSON")
+    p_mcts.add_argument("--model", default=None, help="optional policy net (uniform priors if omitted)")
+    p_mcts.add_argument("--k", type=int, default=None)
+    p_mcts.add_argument("--budget", type=int, default=None)
+    p_mcts.add_argument("--rollouts", type=int, default=100)
+    p_mcts.add_argument("--c-puct", type=float, default=1.5)
+
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
     p_ref.add_argument("--claim", required=True)
@@ -162,6 +174,19 @@ def main(argv: "list[str] | None" = None) -> int:
                 theory, args.relation, args.n, args.model,
                 seed_structure=seed_structure,
                 k=args.k, budget=args.budget, max_steps=args.max_steps,
+            ))
+
+        if args.cmd == "mcts-relation":
+            from .learned.mcts import mcts_relation_build
+
+            theory = load_theory(args.theory)
+            seed_structure = (
+                load_seed_open_world(args.seed, theory.signature) if args.seed else None
+            )
+            return _emit(mcts_relation_build(
+                theory, args.relation, args.n, model_path=args.model,
+                seed_structure=seed_structure, k=args.k, budget=args.budget,
+                rollouts=args.rollouts, c_puct=args.c_puct,
             ))
 
         if args.cmd == "refute":
