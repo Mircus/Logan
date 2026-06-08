@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from .atoms import EqAtom, RelAtom
-from .devil import run_devil
+from .devil import run_devil, run_devil_bounded
 from .eval import eval_atom, eval_term
 from .partial_structure import PartialStructure
 from .terms import Const, Func, Term
@@ -138,6 +138,8 @@ def backtracking_generate(
     theory: Theory,
     n: int,
     *,
+    k: Optional[int] = None,
+    budget: Optional[int] = None,
     max_nodes: int = 10000,
     policy_order: Tuple[str, str] = ("false", "true"),
 ) -> BacktrackResult:
@@ -145,6 +147,7 @@ def backtracking_generate(
     if rel_order is None:
         raise ValueError(f"policy_order must be a permutation of ('false','true'), got {policy_order}")
 
+    bounded = k is not None or budget is not None
     clauses = theory.clauses
     root = PartialStructure.empty(theory.signature, n)
     trace: List[dict] = []
@@ -156,12 +159,25 @@ def backtracking_generate(
             return ("limit", None)
         node_id = state["nodes"]
 
-        result = run_devil(structure, clauses)
-        trace.append({
-            "node": node_id, "depth": depth, "event": "challenge",
-            "status": result.status,
-            "clause": None if result.witness is None else result.witness.clause_name,
-        })
+        if bounded:
+            result = run_devil_bounded(structure, clauses, k=k, budget=budget)
+            challenge = {
+                "node": node_id, "depth": depth, "event": "challenge",
+                "status": result.status,
+                "clause": None if result.witness is None else result.witness.clause_name,
+                "k": k, "budget": budget,
+                "checked_instances": result.checked_instances,
+                "budget_exhausted": result.budget_exhausted,
+                "skipped_by_depth": result.skipped_by_depth,
+            }
+        else:
+            result = run_devil(structure, clauses)
+            challenge = {
+                "node": node_id, "depth": depth, "event": "challenge",
+                "status": result.status,
+                "clause": None if result.witness is None else result.witness.clause_name,
+            }
+        trace.append(challenge)
         if result.status == "ok":
             return ("sat", structure)
         if result.status == "failed":

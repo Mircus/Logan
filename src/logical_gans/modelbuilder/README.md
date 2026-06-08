@@ -59,9 +59,25 @@ pytest -q tests/test_core_preorder.py tests/test_core_semigroup.py
 Each command prints JSON with `status`, the resulting `structure`, and a
 `trace`/`witness`.
 
+## Bounds
+
+Three independent bounds, do not confuse them:
+
+- `max_nodes` bounds **DFS search effort** (backtracking search nodes).
+- `budget` (`b`) bounds the **Devil's challenge instances** — the max number of
+  grounded clause instances checked in one Devil run. If the budget is
+  exhausted with no failure, the result is `ok` with `budget_exhausted: true`,
+  meaning *survived the bounded attack*, not *globally verified*.
+- `k` bounds the **logical/term complexity of the attack surface** — clauses
+  with `clause_depth > k` are skipped (counted in `skipped_by_depth`).
+
+`run_devil` is exhaustive; `run_devil_bounded(structure, clauses, k=, budget=)`
+applies the bounds. `search` and `synthesize` accept `--k` and `--budget`.
+
 ## Roles
 
-- **Generator** fills unknown interpretation cells (monotone, no revision yet).
+- **Generator** fills unknown interpretation cells (monotone, no revision yet);
+  `backtracking_generate` searches with backtracking.
 - **Devil (Opponent)** probes bounded axiom instances and returns witnesses
   (a `failed` violation) or obligations (an `unknown` cell to discharge).
 

@@ -9,7 +9,8 @@ This package is stdlib-only and does not import torch.
 """
 from .core.backtracking import BacktrackResult, backtracking_generate
 from .core.clauses import HornClause
-from .core.devil import DevilResult, run_devil
+from .core.depth import atom_depth, clause_depth, term_depth
+from .core.devil import DevilResult, run_devil, run_devil_bounded
 from .core.generator import GenerateResult, generate
 from .core.partial_structure import PartialStructure
 from .core.loader import (
@@ -38,6 +39,10 @@ __all__ = [
     "Witness",
     "DevilResult",
     "run_devil",
+    "run_devil_bounded",
+    "term_depth",
+    "atom_depth",
+    "clause_depth",
     "GenerateResult",
     "generate",
     "BacktrackResult",

@@ -10,8 +10,20 @@ from .policy import BuilderPolicy
 from .theory import Claim, Theory
 
 
-def synthesize(theory: Theory, n: int, policy: Optional[BuilderPolicy] = None) -> GenerateResult:
-    return generate(PartialStructure.empty(theory.signature, n), theory.clauses, policy=policy)
+def synthesize(
+    theory: Theory,
+    n: int,
+    policy: Optional[BuilderPolicy] = None,
+    k: Optional[int] = None,
+    budget: Optional[int] = None,
+) -> GenerateResult:
+    return generate(
+        PartialStructure.empty(theory.signature, n),
+        theory.clauses,
+        policy=policy,
+        k=k,
+        budget=budget,
+    )
 
 
 def check(theory: Theory, structure: PartialStructure) -> dict:

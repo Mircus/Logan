@@ -35,6 +35,8 @@ def main(argv: "list[str] | None" = None) -> int:
     p_syn.add_argument("--theory", required=True)
     p_syn.add_argument("--n", type=int, required=True)
     p_syn.add_argument("--policy", default="sparse_horn", choices=_POLICY_CHOICES)
+    p_syn.add_argument("--k", type=int, default=None, help="logical/term depth bound")
+    p_syn.add_argument("--budget", type=int, default=None, help="Devil challenge-instance budget")
 
     p_chk = sub.add_parser("check", help="check a JSON structure against a JSON theory")
     p_chk.add_argument("--theory", required=True)
@@ -44,6 +46,8 @@ def main(argv: "list[str] | None" = None) -> int:
     p_search.add_argument("--theory", required=True)
     p_search.add_argument("--n", type=int, required=True)
     p_search.add_argument("--max-nodes", type=int, default=10000)
+    p_search.add_argument("--k", type=int, default=None, help="logical/term depth bound")
+    p_search.add_argument("--budget", type=int, default=None, help="Devil challenge-instance budget")
 
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
@@ -71,7 +75,7 @@ def main(argv: "list[str] | None" = None) -> int:
     try:
         if args.cmd == "synthesize":
             theory = load_theory(args.theory)
-            res = synthesize(theory, args.n, get_policy(args.policy))
+            res = synthesize(theory, args.n, get_policy(args.policy), k=args.k, budget=args.budget)
             return _emit({"status": res.status, "policy": res.policy,
                           "structure": res.structure.to_json(), "trace": res.trace})
 
@@ -84,7 +88,8 @@ def main(argv: "list[str] | None" = None) -> int:
             from .core.backtracking import backtracking_generate
 
             theory = load_theory(args.theory)
-            res = backtracking_generate(theory, args.n, max_nodes=args.max_nodes)
+            res = backtracking_generate(theory, args.n, k=args.k, budget=args.budget,
+                                        max_nodes=args.max_nodes)
             return _emit({"status": res.status, "nodes": res.nodes,
                           "structure": res.structure.to_json(), "trace": res.trace})
 

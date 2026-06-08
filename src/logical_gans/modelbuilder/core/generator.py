@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 
 from .atoms import EqAtom, RelAtom
 from .clauses import HornClause
-from .devil import DevilResult, run_devil
+from .devil import DevilResult, run_devil, run_devil_bounded
 from .eval import eval_atom, eval_term
 from .partial_structure import PartialStructure
 from .policy import BuilderPolicy, DEFAULT_POLICY
@@ -142,16 +142,30 @@ def generate(
     clauses: List[HornClause],
     max_steps: int = 1000,
     policy: Optional[BuilderPolicy] = None,
+    k: Optional[int] = None,
+    budget: Optional[int] = None,
 ) -> GenerateResult:
     policy = policy if policy is not None else DEFAULT_POLICY()
+    bounded = k is not None or budget is not None
     structure = structure.copy()
     trace: List[dict] = [{"event": "start", "policy": policy.name}]
     for step in range(max_steps):
-        result = run_devil(structure, clauses)
-        trace.append(
-            {"step": step, "event": "challenge", "status": result.status,
-             "clause": None if result.witness is None else result.witness.clause_name}
-        )
+        if bounded:
+            result = run_devil_bounded(structure, clauses, k=k, budget=budget)
+            trace.append(
+                {"step": step, "event": "challenge", "status": result.status,
+                 "clause": None if result.witness is None else result.witness.clause_name,
+                 "k": k, "budget": budget,
+                 "checked_instances": result.checked_instances,
+                 "budget_exhausted": result.budget_exhausted,
+                 "skipped_by_depth": result.skipped_by_depth}
+            )
+        else:
+            result = run_devil(structure, clauses)
+            trace.append(
+                {"step": step, "event": "challenge", "status": result.status,
+                 "clause": None if result.witness is None else result.witness.clause_name}
+            )
         if result.status == "ok":
             trace.append({"event": "result", "status": "satisfied"})
             return GenerateResult("satisfied", structure, trace, policy.name)
