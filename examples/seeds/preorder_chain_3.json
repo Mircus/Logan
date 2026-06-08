@@ -1,0 +1,9 @@
+{
+  "domain": [0, 1, 2],
+  "relations": {
+    "R(0,1)": "true",
+    "R(1,2)": "true"
+  },
+  "functions": {},
+  "constants": {}
+}

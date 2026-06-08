@@ -138,6 +138,7 @@ def backtracking_generate(
     theory: Theory,
     n: int,
     *,
+    seed_structure: Optional[PartialStructure] = None,
     k: Optional[int] = None,
     budget: Optional[int] = None,
     max_nodes: int = 10000,
@@ -149,7 +150,8 @@ def backtracking_generate(
 
     bounded = k is not None or budget is not None
     clauses = theory.clauses
-    root = PartialStructure.empty(theory.signature, n)
+    root = seed_structure.copy() if seed_structure is not None \
+        else PartialStructure.empty(theory.signature, n)
     trace: List[dict] = []
     state = {"nodes": 0}
 

@@ -75,6 +75,7 @@ def main(argv: "list[str] | None" = None) -> int:
     p_nb.add_argument("--relation", required=True)
     p_nb.add_argument("--n", type=int, required=True)
     p_nb.add_argument("--model", required=True)
+    p_nb.add_argument("--seed", default=None, help="open-world seed structure JSON")
     p_nb.add_argument("--k", type=int, default=None)
     p_nb.add_argument("--budget", type=int, default=None)
     p_nb.add_argument("--max-steps", type=int, default=50)
@@ -98,7 +99,13 @@ def main(argv: "list[str] | None" = None) -> int:
 
     args = parser.parse_args(argv)
 
-    from .core.loader import TheoryLoadError, load_claim, load_structure, load_theory
+    from .core.loader import (
+        TheoryLoadError,
+        load_claim,
+        load_seed_open_world,
+        load_structure,
+        load_theory,
+    )
     from .core.policy import get_policy
     from .core.runner import check, refute, synthesize
 
@@ -148,8 +155,12 @@ def main(argv: "list[str] | None" = None) -> int:
             from .learned.builder import neural_relation_build
 
             theory = load_theory(args.theory)
+            seed_structure = (
+                load_seed_open_world(args.seed, theory.signature) if args.seed else None
+            )
             return _emit(neural_relation_build(
                 theory, args.relation, args.n, args.model,
+                seed_structure=seed_structure,
                 k=args.k, budget=args.budget, max_steps=args.max_steps,
             ))
 

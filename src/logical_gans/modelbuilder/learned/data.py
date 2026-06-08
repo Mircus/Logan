@@ -1,9 +1,12 @@
 """Supervised training examples mined from Devil witnesses.
 
 For random partial structures over a theory's signature, run the bounded
-Devil. When it is blocked on an UNKNOWN relation cell, emit a labeled edit:
-conclusion-block -> set that cell TRUE; premise-block -> set it FALSE
-(the SparseHornPolicy target). The theory is loaded data, not hard-coded.
+Devil. When it is blocked on an UNKNOWN relation cell, label the target by a
+theory-general *closure oracle*: seed the backtracking search from the same
+structure and read the blocked cell's value in the model it finds. This
+yields forced cells -> TRUE and free cells -> FALSE, which (unlike a pure
+SparseHornPolicy heuristic) teaches genuine completion of forced facts such
+as transitive closure. The theory is loaded data, not hard-coded.
 """
 from __future__ import annotations
 
@@ -15,7 +18,7 @@ from typing import List, Optional
 
 import torch
 
-from ..core.backtracking import _decision_cell
+from ..core.backtracking import _decision_cell, backtracking_generate
 from ..core.devil import run_devil_bounded
 from ..core.partial_structure import PartialStructure
 from ..core.theory import Theory
@@ -63,8 +66,16 @@ def make_relation_training_examples(
         if cell is None or cell[0] != "relation" or cell[1] != relation:
             continue  # only binary-relation obligations in this milestone
         args = cell[2]
-        # conclusion-block (conclusion_value present) -> TRUE; premise-block -> FALSE
-        value = Truth.TRUE if result.witness.conclusion_value is not None else Truth.FALSE
+
+        # Closure oracle: complete this structure with the backtracking search
+        # and read the blocked cell's value in the model it finds.
+        oracle = backtracking_generate(theory, n, seed_structure=structure)
+        if oracle.status != "satisfied":
+            continue
+        value = oracle.structure.get_relation(relation, args)
+        if value is Truth.UNKNOWN:
+            continue
+
         edit = RelationEdit(relation, args, value)
         examples.append(TrainingExample(
             theory_name=theory.name,

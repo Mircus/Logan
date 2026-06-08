@@ -23,7 +23,7 @@ checkpoints/
 # learned ModelBuilder generated artifacts (regenerable via the demo/CLI)
 models/
 results/training/
-results/neural_preorder_demo.json
+results/neural_*.json
 *.pt
 
 # Results (optional - uncomment to track CSVs in git)
