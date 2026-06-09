@@ -70,3 +70,16 @@ def test_generic_mcts_on_constant_and_relation():
     kinds = _kinds(out)
     assert "set_constant" in kinds and "set_relation" in kinds
     assert _verify(theory, out["structure"], 2) == "ok"
+
+
+def test_generic_mcts_on_toy_mixed_signature():
+    theory = load_theory(THEORIES / "toy_mixed_signature.json")
+    out = mcts_semantic_build(theory, 2, rollouts=200)
+    assert out["status"] == "satisfied"
+    # all three kinds of semantic edit appear over the run
+    assert _kinds(out) == {"set_relation", "set_function", "set_constant"}
+    struct = out["structure"]
+    assert any(v != "unknown" for v in struct["relations"].values())   # >=1 relation
+    assert any(v is not None for v in struct["functions"].values())    # >=1 function
+    assert any(v is not None for v in struct["constants"].values())    # >=1 constant
+    assert _verify(theory, struct, 2) == "ok"

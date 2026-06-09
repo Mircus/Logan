@@ -94,6 +94,18 @@ def main(argv: "list[str] | None" = None) -> int:
     p_mcts.add_argument("--llm-prior", default=None,
                         help="optional LLM prior hook, e.g. mock:first_true / mock:witness_match")
 
+    p_ms = sub.add_parser("mcts-semantic",
+                          help="signature-parametric MCTS over generic semantic edits")
+    p_ms.add_argument("--theory", required=True)
+    p_ms.add_argument("--n", type=int, required=True)
+    p_ms.add_argument("--seed", default=None, help="open-world seed structure JSON")
+    p_ms.add_argument("--k", type=int, default=None)
+    p_ms.add_argument("--budget", type=int, default=None)
+    p_ms.add_argument("--rollouts", type=int, default=200)
+    p_ms.add_argument("--c-puct", type=float, default=1.5)
+    p_ms.add_argument("--prior", default="obligation",
+                      choices=["uniform", "obligation", "mock"])
+
     p_llm = sub.add_parser("llm-propose-relation",
                            help="ask a (mock) LLM for relation edits and validate them")
     p_llm.add_argument("--theory", required=True)
@@ -206,6 +218,21 @@ def main(argv: "list[str] | None" = None) -> int:
                 theory, args.relation, args.n, model_path=args.model,
                 seed_structure=seed_structure, k=args.k, budget=args.budget,
                 rollouts=args.rollouts, c_puct=args.c_puct, llm_prior=llm_prior,
+            ))
+
+        if args.cmd == "mcts-semantic":
+            from .learned.generic_mcts import mcts_semantic_build
+            from .learned.priors import MockLLMPrior, ObligationFirstPrior, UniformPrior
+
+            theory = load_theory(args.theory)
+            seed_structure = (
+                load_seed_open_world(args.seed, theory.signature) if args.seed else None
+            )
+            provider = {"uniform": UniformPrior, "obligation": ObligationFirstPrior,
+                        "mock": MockLLMPrior}[args.prior]()
+            return _emit(mcts_semantic_build(
+                theory, args.n, seed_structure=seed_structure, k=args.k, budget=args.budget,
+                rollouts=args.rollouts, c_puct=args.c_puct, prior_hook=provider,
             ))
 
         if args.cmd == "llm-propose-relation":
