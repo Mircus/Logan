@@ -106,6 +106,34 @@ def main(argv: "list[str] | None" = None) -> int:
     p_ms.add_argument("--prior", default="obligation",
                       choices=["uniform", "obligation", "mock"])
 
+    p_mtd = sub.add_parser("make-semantic-training-data",
+                           help="mine semantic-policy training data from generic refute traces")
+    p_mtd.add_argument("--theory", required=True)
+    p_mtd.add_argument("--claim", required=True)
+    p_mtd.add_argument("--n", type=int, required=True)
+    p_mtd.add_argument("--samples", type=int, default=200)
+    p_mtd.add_argument("--seed", type=int, default=0)
+    p_mtd.add_argument("--rollouts", type=int, default=400)
+    p_mtd.add_argument("--out", required=True)
+
+    p_tsp = sub.add_parser("train-semantic-policy", help="train the SemanticPolicyNet")
+    p_tsp.add_argument("--data", required=True)
+    p_tsp.add_argument("--epochs", type=int, default=50)
+    p_tsp.add_argument("--lr", type=float, default=1e-3)
+    p_tsp.add_argument("--seed", type=int, default=0)
+    p_tsp.add_argument("--out", required=True)
+
+    p_msr = sub.add_parser("mcts-semantic-refute",
+                           help="neural-guided MCTS countermodel search (satisfy theory, refute claim)")
+    p_msr.add_argument("--theory", required=True)
+    p_msr.add_argument("--claim", required=True)
+    p_msr.add_argument("--n", type=int, required=True)
+    p_msr.add_argument("--model", default=None, help="SemanticPolicyNet checkpoint (neural prior)")
+    p_msr.add_argument("--k", type=int, default=None)
+    p_msr.add_argument("--budget", type=int, default=None)
+    p_msr.add_argument("--rollouts", type=int, default=500)
+    p_msr.add_argument("--seed", type=int, default=0)
+
     p_llm = sub.add_parser("llm-propose-relation",
                            help="ask a (mock) LLM for relation edits and validate them")
     p_llm.add_argument("--theory", required=True)
@@ -234,6 +262,38 @@ def main(argv: "list[str] | None" = None) -> int:
                 theory, args.n, seed_structure=seed_structure, k=args.k, budget=args.budget,
                 rollouts=args.rollouts, c_puct=args.c_puct, prior_hook=provider,
             ))
+
+        if args.cmd == "make-semantic-training-data":
+            from .learned.semantic_training import (
+                make_semantic_training_examples,
+                write_semantic_training_jsonl,
+            )
+
+            theory = load_theory(args.theory)
+            claim = load_claim(args.claim)
+            examples = make_semantic_training_examples(
+                theory, claim, args.n, args.samples, seed=args.seed, rollouts=args.rollouts)
+            write_semantic_training_jsonl(examples, args.out)
+            return _emit({"out": args.out, "examples": len(examples), "n": args.n})
+
+        if args.cmd == "train-semantic-policy":
+            from .learned.semantic_training import train_semantic_policy
+
+            return _emit(train_semantic_policy(
+                args.data, args.out, epochs=args.epochs, lr=args.lr, seed=args.seed))
+
+        if args.cmd == "mcts-semantic-refute":
+            from .learned.generic_mcts import mcts_semantic_refute
+
+            theory = load_theory(args.theory)
+            claim = load_claim(args.claim)
+            prior = None
+            if args.model:
+                from .learned.priors import NeuralSemanticPrior
+                prior = NeuralSemanticPrior(args.model)
+            return _emit(mcts_semantic_refute(
+                theory, claim, args.n, prior_provider=prior,
+                k=args.k, budget=args.budget, rollouts=args.rollouts, seed=args.seed))
 
         if args.cmd == "llm-propose-relation":
             from .learned.llm_protocol import (

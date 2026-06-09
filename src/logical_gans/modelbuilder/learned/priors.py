@@ -84,3 +84,40 @@ class MockLLMPrior(PriorProvider):
         plan = validate_generic_llm_actions(parse_generic_llm_output(text), allowed_edits)
         valid = set(plan.validated)
         return {e: (2.0 if e in valid else 0.5) for e in allowed_edits}
+
+
+class NeuralSemanticPrior(PriorProvider):
+    """A trained SemanticPolicyNet scoring generic semantic edits by features."""
+
+    is_neural = True
+
+    def __init__(self, model_path: str):
+        import torch
+
+        from .semantic_features import FEATURE_DIM
+        from .semantic_policy_net import SemanticPolicyNet
+
+        try:
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+            feature_dim = checkpoint.get("feature_dim", FEATURE_DIM)
+            model = SemanticPolicyNet(feature_dim)
+            model.load_state_dict(checkpoint["state_dict"])
+        except Exception as e:  # malformed/incompatible checkpoint
+            raise ValueError(f"invalid SemanticPolicyNet checkpoint {model_path!r}: {e}")
+        model.eval()
+        self._model = model
+
+    def score(self, structure, devil_result, allowed_edits):
+        import torch
+
+        from .semantic_features import feature_vector
+
+        obligation = None
+        if devil_result is not None and getattr(devil_result, "status", None) == "unknown":
+            obligation = extract_obligation(structure, devil_result)
+        feats = torch.tensor(
+            [feature_vector(e, structure, obligation) for e in allowed_edits],
+            dtype=torch.float32)
+        with torch.no_grad():
+            logits = self._model(feats)
+        return {e: float(v) for e, v in zip(allowed_edits, logits.tolist() if logits.dim() else [float(logits)])}
