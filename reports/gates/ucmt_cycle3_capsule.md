@@ -4,7 +4,10 @@
 
 **SHA:** branch `signature-parametric-builder`, built on `41ecb3c` (Gate 2:
 "Add neural semantic ablation gate"). Capsule added in the commit that adds
-this file; see the branch HEAD.
+this file.
+
+Capsule implementation SHA:
+a221852a0b387a584b47a339f62727a230bcff4b
 
 **Command:**
 ```
