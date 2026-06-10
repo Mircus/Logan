@@ -65,6 +65,12 @@ b=800), the generator returns `s = (0→2→1→0)`, `a = 1`, so the witness is
 
 See [reports/gates/ucmt_cycle3_capsule.md](reports/gates/ucmt_cycle3_capsule.md).
 
+**Try your own finite signature/problem:** see
+[docs/tutorials/bring_your_own_problem.md](docs/tutorials/bring_your_own_problem.md),
+start from [examples/problems/TEMPLATE_problem.json](examples/problems/TEMPLATE_problem.json),
+and run `prove-countermodel your_problem.json --auto-train` (auto-train fits a
+small problem-specific prior, not a universal pretrained model).
+
 ---
 
 ## Quick Start

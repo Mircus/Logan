@@ -1,0 +1,25 @@
+{
+  "name": "byop_sample_countermodel",
+  "_comment": "Bring-your-own-problem sample. Same supported fragment as the capsule, a DIFFERENT problem: an order-2 involution instead of cycle3's order-3. Verified to produce a real countermodel.",
+  "signature": {
+    "relations": [{"name": "Q", "arity": 2}],
+    "functions": [{"name": "g", "arity": 1}],
+    "constants": ["d"]
+  },
+  "theory": [
+    "forall x: Q(x, g(x))",
+    "forall x: g(g(x)) = x"
+  ],
+  "claim": "g(d) = d",
+  "domain_size": 2,
+  "bound": {
+    "depth": 2,
+    "budget": 500
+  },
+  "generator": {
+    "kind": "neural_semantic_mcts",
+    "random_rollouts": "disabled",
+    "rollouts": 500,
+    "auto_train": true
+  }
+}

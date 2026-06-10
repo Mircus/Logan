@@ -108,6 +108,92 @@ def translate_problem(problem: dict):
     return theory, claim
 
 
+def signature_summary(problem: dict) -> str:
+    """e.g. 'E/2, s/1, a' from a problem signature block."""
+    sig = problem.get("signature", {})
+    parts = [f"{r['name']}/{r['arity']}" for r in sig.get("relations", [])]
+    parts += [f"{f['name']}/{f['arity']}" for f in sig.get("functions", [])]
+    parts += [c if isinstance(c, str) else c.get("name", "?") for c in sig.get("constants", [])]
+    return ", ".join(parts)
+
+
+# --------------------------------------------------------------------------
+# Problem validation (used by `validate-problem` and before every capsule run).
+# --------------------------------------------------------------------------
+_KNOWN_GENERATORS = {"neural_semantic_mcts"}
+
+
+def _arity_errors(signature, clauses) -> List[str]:
+    from .core.atoms import EqAtom, RelAtom
+    from .core.terms import Func
+
+    errs: List[str] = []
+
+    def check_term(t):
+        if isinstance(t, Func):
+            fn = signature.functions.get(t.name)
+            if fn is None:
+                errs.append(f"unknown function symbol {t.name!r}")
+            elif len(t.args) != fn.arity:
+                errs.append(f"function {t.name!r} used with arity {len(t.args)}, expected {fn.arity}")
+            for a in t.args:
+                check_term(a)
+
+    def check_atom(a):
+        if isinstance(a, RelAtom):
+            rel = signature.relations.get(a.relation)
+            if rel is None:
+                errs.append(f"unknown relation symbol {a.relation!r}")
+            elif len(a.args) != rel.arity:
+                errs.append(f"relation {a.relation!r} used with arity {len(a.args)}, expected {rel.arity}")
+            for t in a.args:
+                check_term(t)
+        elif isinstance(a, EqAtom):
+            check_term(a.left)
+            check_term(a.right)
+
+    for c in clauses:
+        for p in c.premises:
+            check_atom(p)
+        check_atom(c.conclusion)
+    return errs
+
+
+def validate_problem(problem: dict) -> List[str]:
+    """Return a list of human-readable errors; empty list means the file is OK."""
+    if not isinstance(problem.get("signature"), dict):
+        return ["missing or malformed 'signature' object"]
+
+    errors: List[str] = []
+    n = problem.get("domain_size")
+    if not isinstance(n, int) or n <= 0:
+        errors.append("'domain_size' must be a positive integer")
+    bound = problem.get("bound")
+    if not isinstance(bound, dict):
+        errors.append("missing 'bound' object with 'depth' and 'budget'")
+    else:
+        if not isinstance(bound.get("depth"), int):
+            errors.append("missing/invalid 'bound.depth' (integer)")
+        if not isinstance(bound.get("budget"), int):
+            errors.append("missing/invalid 'bound.budget' (integer)")
+    if not isinstance(problem.get("theory"), list) or not problem.get("theory"):
+        errors.append("'theory' must be a non-empty list of formula strings")
+    if not isinstance(problem.get("claim"), str):
+        errors.append("'claim' must be a single formula string")
+    kind = problem.get("generator", {}).get("kind", "neural_semantic_mcts")
+    if kind not in _KNOWN_GENERATORS:
+        errors.append(f"unrecognized generator.kind {kind!r} (known: {sorted(_KNOWN_GENERATORS)})")
+
+    # Parse the formulas (symbol existence) and check arities against the signature.
+    if isinstance(problem.get("theory"), list) and isinstance(problem.get("claim"), str):
+        try:
+            theory, claim = translate_problem(problem)
+            errors.extend(_arity_errors(theory.signature, list(theory.clauses) + list(claim.clauses)))
+        except Exception as e:  # translator/loader rejects unknown symbols, bad syntax
+            errors.append(f"theory/claim parse error: {e}")
+    return errors
+
+
 # --------------------------------------------------------------------------
 # Capsule runner -- reuses the committed Gate-2 ablation functions.
 # --------------------------------------------------------------------------
@@ -133,7 +219,7 @@ def _structure_has_all_kinds(struct) -> bool:
     return has_rel and has_fn and has_const
 
 
-def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150) -> dict:
+def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, auto_train=None) -> dict:
     from .core.devil import run_devil_bounded
     from .learned.priors import NeuralSemanticPrior, ObligationFirstPrior, UniformPrior
     from .learned.semantic_training import train_semantic_policy, write_semantic_training_jsonl
@@ -141,6 +227,9 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150) -> 
     gate = _import_gate()
 
     problem = json.loads(Path(problem_path).read_text(encoding="utf-8"))
+    errors = validate_problem(problem)
+    if errors:
+        raise ValueError("invalid problem file:\n  - " + "\n  - ".join(errors))
     theory, claim = translate_problem(problem)
 
     n = int(problem["domain_size"])
@@ -152,16 +241,30 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150) -> 
     data_path = root / "results" / "training" / f"{name}_semantic.jsonl"
     model_path = root / "models" / f"{name}_semantic_policy.pt"
 
-    # 1. oracle traces -> train the neural semantic prior (reuses Gate-2 code).
-    examples = gate.build_training_examples(theory, claim, n)
-    write_semantic_training_jsonl(examples, data_path)
-    train_meta = train_semantic_policy(str(data_path), str(model_path), epochs=epochs, seed=gate.SEED)
+    # auto_train: CLI flag wins, else the problem file's generator.auto_train, default True.
+    if auto_train is None:
+        auto_train = bool(problem.get("generator", {}).get("auto_train", True))
+
+    # 1. Optionally mine oracle traces and train a SMALL problem-specific prior.
+    #    (Not a universal pretrained model.) Falls back gracefully if the oracle
+    #    finds no refuting trajectory for this problem.
+    uses_neural = False
+    neural_prior = ObligationFirstPrior()
+    train_meta = {"examples": 0, "final_loss": None}
+    if auto_train:
+        examples = gate.build_training_examples(theory, claim, n)
+        if examples:
+            write_semantic_training_jsonl(examples, data_path)
+            train_meta = train_semantic_policy(str(data_path), str(model_path),
+                                               epochs=epochs, seed=gate.SEED)
+            neural_prior = NeuralSemanticPrior(str(model_path))
+            uses_neural = True
 
     # 2. three arms, identical budget/seed, rollouts disabled (tree policy only).
     arms = {
         "uniform": UniformPrior(),
         "obligation_first": ObligationFirstPrior(),
-        "neural": NeuralSemanticPrior(str(model_path)),
+        "neural": neural_prior,
     }
     results = {nm: gate.tree_policy_search(theory, claim, n, prior, budget=rollouts)
                for nm, prior in arms.items()}
@@ -194,7 +297,8 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150) -> 
             neural["success"] and base["nodes_evaluated"] >= 3 * neural["nodes_evaluated"])
 
     accepted = bool(
-        neural["success"]
+        uses_neural
+        and neural["success"]
         and neural["success_via"] == "guided_tree_policy"
         and theory_bounded == "ok"
         and claim_bounded == "failed"
@@ -206,11 +310,12 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150) -> 
     certificate = {
         "problem": {
             "name": name,
-            "signature": "E/2, s/1, a",
-            "theory": ["forall x E(x,s(x))", "forall x s(s(s(x)))=x"],
-            "claim": "s(a)=a",
+            "signature": signature_summary(problem),
+            "theory": list(problem.get("theory", [])),
+            "claim": problem.get("claim", ""),
             "n": n,
         },
+        "status": "refuted" if accepted else ("refuted_unverified" if neural["success"] else "not_found"),
         "certificate": {
             "model_relation": theory_relation,
             "counterclaim_relation": claim_relation,
@@ -221,9 +326,11 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150) -> 
         },
         "generator": {
             "kind": problem.get("generator", {}).get("kind", "neural_semantic_mcts"),
-            "uses_neural_policy": bool(neural["success"]),
+            "auto_train": bool(auto_train),
+            "uses_neural_policy": bool(uses_neural and neural["success"]),
             "random_rollouts": problem.get("generator", {}).get("random_rollouts", "disabled"),
             "success_via": neural["success_via"],
+            "note": "auto-train fits a small problem-specific neural prior; it is NOT a universal pretrained model",
         },
         "structure": structure_json or {},
         "witness": neural["claim_witness"] or {},
@@ -253,24 +360,17 @@ def gate_truth(value: str):
 # Human-readable certificate.
 # --------------------------------------------------------------------------
 def render_certificate(cert: dict) -> str:
-    s = cert["structure"]
-    abl = cert["ablation"]
-    g = cert["generator"]
-    c = cert["certificate"]
-    const_name = next(iter(s["constants"]), "a")
-    a_val = s["constants"].get(const_name)
-    funcs = ", ".join(f"{k}={v}" for k, v in s["functions"].items() if v is not None)
-    true_rels = ", ".join(f"{k}=true" for k, v in s["relations"].items() if v == "true")
-    s_at_a = s["functions"].get(f"s({a_val})")
+    p, s, abl, g, c = (cert["problem"], cert["structure"], cert["ablation"],
+                       cert["generator"], cert["certificate"])
 
     lines = [
         "LOGAN / UCMT countermodel certificate",
         "",
         "Problem:",
-        "  Σ = {E/2, s/1, a}",
-        "  T = {∀x E(x,s(x)), ∀x s(s(s(x)))=x}",
-        "  C = s(a)=a",
-        f"  n = {cert['problem']['n']}",
+        f"  Σ = {{{p['signature']}}}",
+        f"  T = {{{'; '.join(p['theory'])}}}",
+        f"  C = {p['claim']}",
+        f"  n = {p['n']}",
         "",
         "Bound:",
         f"  k = {c['depth']}",
@@ -279,20 +379,32 @@ def render_certificate(cert: dict) -> str:
         "Generator:",
         f"  {g['kind']}",
         f"  random_rollouts = {g['random_rollouts']}",
+        f"  auto_train = {g['auto_train']}  (problem-specific prior, not a universal model)",
         "",
         "Result:",
-        f"  {c['model_relation']}",
-        f"  {c['counterclaim_relation']}",
-        "",
-        "Generated structure:",
-        f"  {const_name} = {a_val}",
-        f"  {funcs}",
-        f"  {true_rels}",
-        "",
-        "Witness:",
-        f"  s({const_name}) = s({a_val}) = {s_at_a}",
-        f"  {const_name} = {a_val}",
-        f"  therefore s({const_name}) ≠ {const_name}",
+    ]
+    if cert["accepted"]:
+        funcs = ", ".join(f"{k}={v}" for k, v in s.get("functions", {}).items() if v is not None)
+        consts = ", ".join(f"{k}={v}" for k, v in s.get("constants", {}).items() if v is not None)
+        true_rels = ", ".join(f"{k}=true" for k, v in s.get("relations", {}).items() if v == "true")
+        lines += [
+            f"  {c['model_relation']}",
+            f"  {c['counterclaim_relation']}",
+            "",
+            "Generated structure:",
+            f"  constants: {consts}",
+            f"  functions: {funcs}",
+            f"  relations: {true_rels}",
+            "",
+            "Witness:",
+            f"  {cert['witness'].get('message', '(no witness)')}",
+        ]
+    else:
+        lines += [
+            f"  no verified countermodel at (k={c['depth']}, b={c['budget']}) -> status={cert['status']}",
+            "  (theory/claim parsed and ran; the bounded search did not return a verified refutation)",
+        ]
+    lines += [
         "",
         "Ablation:",
         f"  uniform: {'succeeded' if abl['uniform']['success'] else 'failed'} at {abl['uniform']['nodes_evaluated']} nodes",

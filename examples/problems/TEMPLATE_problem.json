@@ -1,0 +1,28 @@
+{
+  "_README": "EDIT THIS FILE. Copy it, rename 'name', and put your own finite signature/theory/claim here. See docs/tutorials/bring_your_own_problem.md. Supported: finite relations/functions/constants, universal Horn/equational clauses, finite domain, explicit depth k and budget b. A countermodel is not guaranteed to exist or to be found within (k,b).",
+  "name": "my_problem",
+  "signature": {
+    "relations": [
+      {"name": "R", "arity": 2}
+    ],
+    "functions": [
+      {"name": "f", "arity": 1}
+    ],
+    "constants": ["c"]
+  },
+  "theory": [
+    "forall x: R(x, f(x))"
+  ],
+  "claim": "R(c,c)",
+  "domain_size": 3,
+  "bound": {
+    "depth": 2,
+    "budget": 500
+  },
+  "generator": {
+    "kind": "neural_semantic_mcts",
+    "random_rollouts": "disabled",
+    "rollouts": 500,
+    "auto_train": true
+  }
+}

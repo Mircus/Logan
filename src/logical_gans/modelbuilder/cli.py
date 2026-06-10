@@ -146,10 +146,17 @@ def main(argv: "list[str] | None" = None) -> int:
     p_llm.add_argument("--mock", default="witness_match",
                        choices=["first_true", "first_false", "witness_match"])
 
+    p_vp = sub.add_parser("validate-problem",
+                          help="check a self-contained problem JSON (signature/theory/claim/bound)")
+    p_vp.add_argument("problem", help="path to a problem JSON (examples/problems/*.json)")
+
     p_pc = sub.add_parser("prove-countermodel",
                           help="run the UCMT countermodel capsule from a self-contained problem file")
     p_pc.add_argument("problem", help="path to a problem JSON (examples/problems/*.json)")
     p_pc.add_argument("--epochs", type=int, default=150)
+    p_pc.add_argument("--auto-train", action="store_true",
+                      help="fit a small PROBLEM-SPECIFIC neural semantic prior "
+                           "(not a universal pretrained model)")
 
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
@@ -341,6 +348,19 @@ def main(argv: "list[str] | None" = None) -> int:
                 },
             })
 
+        if args.cmd == "validate-problem":
+            from .capsule import validate_problem
+
+            problem = json.loads(Path(args.problem).read_text(encoding="utf-8"))
+            errs = validate_problem(problem)
+            if not errs:
+                print("Problem validation: OK")
+                return 0
+            print("Problem validation: FAILED")
+            for e in errs:
+                print(f"  - {e}")
+            return 1
+
         if args.cmd == "prove-countermodel":
             from .capsule import render_certificate, run_countermodel_capsule
 
@@ -350,7 +370,9 @@ def main(argv: "list[str] | None" = None) -> int:
                 pass
             problem = json.loads(Path(args.problem).read_text(encoding="utf-8"))
             out = _repo_root() / "results" / f"{problem.get('name', 'problem')}_certificate.json"
-            cert = run_countermodel_capsule(args.problem, out_path=out, epochs=args.epochs)
+            auto_train = True if args.auto_train else None  # flag forces on; else file/default
+            cert = run_countermodel_capsule(args.problem, out_path=out,
+                                            epochs=args.epochs, auto_train=auto_train)
             print(render_certificate(cert))
             print(f"\ncertificate written to {out}")
             return 0 if cert["accepted"] else 1

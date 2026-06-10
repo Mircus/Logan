@@ -48,7 +48,9 @@ class ObligationFirstPrior(PriorProvider):
     """Boost edits that discharge the Devil's current obligation (preferred value highest)."""
 
     def score(self, structure, devil_result, allowed_edits):
-        obl = extract_obligation(structure, devil_result)
+        obl = None
+        if devil_result is not None and getattr(devil_result, "status", None) == "unknown":
+            obl = extract_obligation(structure, devil_result)
         if obl is None:
             return {e: 1.0 for e in allowed_edits}
         preferred = obl.suggested_values[0] if obl.suggested_values else None
