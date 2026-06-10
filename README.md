@@ -44,6 +44,27 @@ instances. See `docs/modelbuilder_architecture.md`,
 `docs/modelbuilder_output_schema.md`, and
 `docs/modelbuilder_v0_1_walkthrough.md`. Status: `v0.1.0-alpha`.
 
+For the headline demo built on this kernel, see the **LOGAN UCMT Capsule** below.
+
+---
+
+## LOGAN UCMT Capsule
+
+A neural-guided generator builds a finite Σ-structure that, under the bounded
+*Devil* at depth *k* and budget *b*, **satisfies a theory while refuting a claim**
+(`A ⊩_{k,b} T` and `A ⊭_{k,b} C`) and emits a replayable certificate.
+
+```bash
+PYTHONPATH=src python -m logical_gans.modelbuilder.cli prove-countermodel \
+  examples/problems/cycle3_countermodel.json
+```
+
+For Σ = {E/2, s/1, a}, T = {∀x E(x,s(x)), ∀x s(s(s(x)))=x}, C = s(a)=a (n=3, k=3,
+b=800), the generator returns `s = (0→2→1→0)`, `a = 1`, so the witness is
+`s(a) = s(1) = 0 ≠ 1 = a` — i.e. `A ⊩_{3,800} T` and `A ⊭_{3,800} C`.
+
+See [reports/gates/ucmt_cycle3_capsule.md](reports/gates/ucmt_cycle3_capsule.md).
+
 ---
 
 ## Quick Start
