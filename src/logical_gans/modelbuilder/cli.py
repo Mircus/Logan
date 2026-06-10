@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 _POLICY_CHOICES = ["sparse_horn", "maximal_horn"]
@@ -144,6 +145,11 @@ def main(argv: "list[str] | None" = None) -> int:
     p_llm.add_argument("--budget", type=int, default=None)
     p_llm.add_argument("--mock", default="witness_match",
                        choices=["first_true", "first_false", "witness_match"])
+
+    p_pc = sub.add_parser("prove-countermodel",
+                          help="run the UCMT countermodel capsule from a self-contained problem file")
+    p_pc.add_argument("problem", help="path to a problem JSON (examples/problems/*.json)")
+    p_pc.add_argument("--epochs", type=int, default=150)
 
     p_ref = sub.add_parser("refute", help="refute a JSON claim with a model of a JSON theory")
     p_ref.add_argument("--theory", required=True)
@@ -334,6 +340,20 @@ def main(argv: "list[str] | None" = None) -> int:
                     "rejected": plan.rejected,
                 },
             })
+
+        if args.cmd == "prove-countermodel":
+            from .capsule import render_certificate, run_countermodel_capsule
+
+            try:  # certificate uses ⊩/⊭/∀; force UTF-8 stdout where supported
+                sys.stdout.reconfigure(encoding="utf-8")
+            except (AttributeError, ValueError):
+                pass
+            problem = json.loads(Path(args.problem).read_text(encoding="utf-8"))
+            out = _repo_root() / "results" / f"{problem.get('name', 'problem')}_certificate.json"
+            cert = run_countermodel_capsule(args.problem, out_path=out, epochs=args.epochs)
+            print(render_certificate(cert))
+            print(f"\ncertificate written to {out}")
+            return 0 if cert["accepted"] else 1
 
         if args.cmd == "refute":
             if args.n is None and args.structure is None:

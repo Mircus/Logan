@@ -1,0 +1,23 @@
+{
+  "name": "cycle3_countermodel",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [{"name": "s", "arity": 1}],
+    "constants": ["a"]
+  },
+  "theory": [
+    "forall x: E(x, s(x))",
+    "forall x: s(s(s(x))) = x"
+  ],
+  "claim": "s(a) = a",
+  "domain_size": 3,
+  "bound": {
+    "depth": 3,
+    "budget": 800
+  },
+  "generator": {
+    "kind": "neural_semantic_mcts",
+    "random_rollouts": "disabled",
+    "rollouts": 800
+  }
+}
