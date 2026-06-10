@@ -1,0 +1,23 @@
+{
+  "name": "cycle3_succ",
+  "_comment": "Generic mixed signature (NOT a named algebra). E/2, s/1, a. T = { forall x E(x,s(x)) ; forall x s(s(s(x))) = x }. Harder than the toy: s must be an order-3 permutation.",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [{"name": "s", "arity": 1}],
+    "constants": ["a"]
+  },
+  "clauses": [
+    {
+      "name": "edge_to_succ",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"rel": "E", "args": [{"var": "x"}, {"func": "s", "args": [{"var": "x"}]}]}
+    },
+    {
+      "name": "succ_order_3",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"eq": [{"func": "s", "args": [{"func": "s", "args": [{"func": "s", "args": [{"var": "x"}]}]}]}, {"var": "x"}]}
+    }
+  ]
+}
