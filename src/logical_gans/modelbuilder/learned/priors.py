@@ -123,3 +123,45 @@ class NeuralSemanticPrior(PriorProvider):
         with torch.no_grad():
             logits = self._model(feats)
         return {e: float(v) for e, v in zip(allowed_edits, logits.tolist() if logits.dim() else [float(logits)])}
+
+
+class TokenNeuralPrior(PriorProvider):
+    """Arity-parametric neural prior: a TokenSemanticPolicyNet over variable-length
+    edit-token sequences (no MAX_ARITY truncation)."""
+
+    is_neural = True
+
+    def __init__(self, model_path: str):
+        import torch
+
+        from .semantic_policy_net import TokenSemanticPolicyNet
+        from .semantic_token_features import TOKEN_DIM
+
+        try:
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+            if checkpoint.get("encoder") != "token":
+                raise ValueError("not a token-policy checkpoint (missing encoder='token')")
+            token_dim = checkpoint.get("token_dim", TOKEN_DIM)
+            model = TokenSemanticPolicyNet(token_dim)
+            model.load_state_dict(checkpoint["state_dict"])
+        except Exception as e:
+            raise ValueError(f"invalid TokenSemanticPolicyNet checkpoint {model_path!r}: {e}")
+        model.eval()
+        self._model = model
+
+    def score(self, structure, devil_result, allowed_edits):
+        import torch
+
+        from .semantic_token_features import edit_tokens
+
+        if not allowed_edits:
+            return {}
+        obligation = None
+        if devil_result is not None and getattr(devil_result, "status", None) == "unknown":
+            obligation = extract_obligation(structure, devil_result)
+        tensors = [torch.tensor(edit_tokens(e, structure, obligation), dtype=torch.float32)
+                   for e in allowed_edits]
+        with torch.no_grad():
+            scores = self._model(tensors)
+        vals = scores.tolist() if scores.dim() else [float(scores)]
+        return {e: float(v) for e, v in zip(allowed_edits, vals)}

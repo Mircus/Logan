@@ -94,3 +94,42 @@ def train_semantic_policy(data_path, out_path, epochs=50, lr=1e-3, seed=0) -> di
                 "metadata": {"examples": len(examples), "epochs": epochs, "final_loss": final_loss}},
                out)
     return {"out": str(out), "examples": len(examples), "epochs": epochs, "final_loss": final_loss}
+
+
+def train_token_policy(data_path, out_path, epochs=50, lr=1e-3, seed=0) -> dict:
+    """Train the arity-parametric TokenSemanticPolicyNet.
+
+    Each example is {"edits": [<list of token-rows> per candidate], "target": idx}.
+    """
+    from .semantic_policy_net import TokenSemanticPolicyNet
+    from .semantic_token_features import TOKEN_DIM
+
+    torch.manual_seed(seed)
+    examples = read_semantic_training_jsonl(data_path)
+    if not examples:
+        raise ValueError(f"no training examples in {data_path}")
+
+    model = TokenSemanticPolicyNet(TOKEN_DIM)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    loss_fn = torch.nn.CrossEntropyLoss()
+
+    final_loss = None
+    for _ in range(epochs):
+        total = 0.0
+        for ex in examples:
+            edits = [torch.tensor(toks, dtype=torch.float32) for toks in ex["edits"]]
+            target = torch.tensor([ex["target"]])
+            logits = model(edits).unsqueeze(0)              # (1, m)
+            loss = loss_fn(logits, target)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total += float(loss.item())
+        final_loss = total / len(examples)
+
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({"encoder": "token", "token_dim": TOKEN_DIM, "state_dict": model.state_dict(),
+                "metadata": {"examples": len(examples), "epochs": epochs, "final_loss": final_loss}},
+               out)
+    return {"out": str(out), "examples": len(examples), "epochs": epochs, "final_loss": final_loss}

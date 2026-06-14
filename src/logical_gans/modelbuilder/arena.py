@@ -28,8 +28,7 @@ from typing import Optional
 from .capsule import _formula_to_clause
 from .core.loader import parse_clause, parse_signature
 from .core.theory import Claim, Theory
-from .learned.semantic_features import MAX_ARITY
-from .learned.semantic_search import build_training_examples, tree_policy_search
+from .learned.semantic_search import build_token_training_examples, tree_policy_search
 
 _BASELINES = {"uniform_baseline", "uniform", "obligation_baseline", "obligation_first"}
 
@@ -85,17 +84,13 @@ def _build_goal(problem, signature):
 
 
 def _resolve_prior(kind, mode, theory, goal_obj, n, k, b, epochs, name):
-    """Return (prior, resolved_kind, uses_neural). No silent symbolic fallback."""
+    """Return (prior, resolved_kind, uses_neural). No silent symbolic fallback.
+
+    The neural Builder uses an arity-parametric token encoder (no MAX_ARITY
+    truncation), so any finite signature arity is representable. This is a
+    representation guarantee, NOT a scalability claim.
+    """
     if kind == "neural_mcts":
-        max_arity = max([0]
-                        + [s.arity for s in theory.signature.relations.values()]
-                        + [s.arity for s in theory.signature.functions.values()])
-        if max_arity > MAX_ARITY:
-            raise ValueError(
-                f"neural builder supports arity <= {MAX_ARITY}; this signature has arity "
-                f"{max_arity}. The neural feature model is not yet that-arity-parametric, and "
-                f"silent truncation is not allowed. Use --builder uniform_baseline (a named "
-                f"baseline) or reduce arity.")
         if mode != "refute":
             raise ValueError("neural_mcts auto-train currently supports mode=refute only; "
                              "use --builder uniform_baseline for satisfy mode.")
@@ -104,13 +99,10 @@ def _resolve_prior(kind, mode, theory, goal_obj, n, k, b, epochs, name):
         except Exception:
             raise RuntimeError("Neural builder unavailable (PyTorch not installed). "
                                "Use --builder uniform_baseline explicitly for a baseline.")
-        from .learned.priors import NeuralSemanticPrior
-        from .learned.semantic_training import (
-            train_semantic_policy,
-            write_semantic_training_jsonl,
-        )
+        from .learned.priors import TokenNeuralPrior
+        from .learned.semantic_training import train_token_policy, write_semantic_training_jsonl
 
-        examples = build_training_examples(theory, goal_obj, n, k=k, b=b)
+        examples = build_token_training_examples(theory, goal_obj, n, k=k, b=b)
         if not examples:
             raise RuntimeError(
                 "auto-train found no oracle refuting traces for this problem, so the small "
@@ -120,8 +112,8 @@ def _resolve_prior(kind, mode, theory, goal_obj, n, k, b, epochs, name):
         data = root / "results" / "training" / f"{name}_arena.jsonl"
         model = root / "models" / f"{name}_arena.pt"
         write_semantic_training_jsonl(examples, data)
-        train_semantic_policy(str(data), str(model), epochs=epochs, seed=0)
-        return NeuralSemanticPrior(str(model)), "neural_mcts", True
+        train_token_policy(str(data), str(model), epochs=epochs, seed=0)
+        return TokenNeuralPrior(str(model)), "neural_mcts", True
 
     if kind in ("uniform_baseline", "uniform"):
         from .learned.priors import UniformPrior

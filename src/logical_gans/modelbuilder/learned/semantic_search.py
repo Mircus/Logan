@@ -130,6 +130,35 @@ def build_training_examples(theory, claim, n, k=None, b=None) -> List[dict]:
     return examples
 
 
+def build_token_training_examples(theory, claim, n, k=None, b=None) -> List[dict]:
+    """Like ``build_training_examples`` but emits arity-parametric edit tokens.
+
+    Each example: {"edits": [edit_tokens(e) for e in legal], "target": index}.
+    """
+    from .semantic_token_features import edit_tokens
+
+    examples: List[dict] = []
+    seen: set = set()
+    for path in oracle_refuting_paths(theory, claim, n, k=k, b=b):
+        structure = PartialStructure.empty(theory.signature, n)
+        for edit in path:
+            legal = legal_semantic_edits(structure)
+            if edit in legal:
+                dT = run_devil_bounded(structure, theory.clauses, k=k, budget=b)
+                obl = extract_obligation(structure, dT) if dT.status == "unknown" else None
+                sj = structure.to_json()
+                key = (tuple(sorted(sj["relations"].items())),
+                       tuple(sorted(sj["functions"].items())),
+                       tuple(sorted(sj["constants"].items())),
+                       str(semantic_edit_to_json(edit)))
+                if key not in seen:
+                    seen.add(key)
+                    examples.append({"edits": [edit_tokens(e, structure, obl) for e in legal],
+                                     "target": legal.index(edit)})
+            structure = apply_semantic_edit(structure, edit)
+    return examples
+
+
 # --------------------------------------------------------------------------
 # Tree-policy-only PUCT MCTS (no random rollouts).
 # `closed` is propagated purely for termination (no infinite loop when the
