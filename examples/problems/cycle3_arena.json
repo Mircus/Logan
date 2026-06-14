@@ -1,0 +1,27 @@
+{
+  "name": "cycle3_arena",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [{"name": "s", "arity": 1}],
+    "constants": ["a"]
+  },
+  "theory": [
+    "forall x: E(x, s(x))",
+    "forall x: s(s(s(x))) = x"
+  ],
+  "goal": {
+    "mode": "refute",
+    "claim": "s(a) = a"
+  },
+  "resources": {
+    "domain_size": 3,
+    "depth": 3,
+    "devil_budget": 800,
+    "search_budget": 800
+  },
+  "builder": {
+    "kind": "neural_mcts",
+    "auto_train": true,
+    "random_rollouts": "disabled"
+  }
+}

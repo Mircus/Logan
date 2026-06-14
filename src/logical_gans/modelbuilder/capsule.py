@@ -16,7 +16,6 @@ file's formula strings into the {var/const/func/rel/eq} dicts that
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from typing import List, Tuple
 
@@ -201,15 +200,6 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
-def _import_gate():
-    """Import the committed Gate-2 ablation module (lives under experiments/)."""
-    root = str(_repo_root())
-    if root not in sys.path:
-        sys.path.insert(0, root)
-    from experiments import neural_semantic_ablation_gate as gate  # noqa: E402
-    return gate
-
-
 def _structure_has_all_kinds(struct) -> bool:
     if not struct:
         return False
@@ -221,10 +211,10 @@ def _structure_has_all_kinds(struct) -> bool:
 
 def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, auto_train=None) -> dict:
     from .core.devil import run_devil_bounded
+    from .core.partial_structure import PartialStructure
     from .learned.priors import NeuralSemanticPrior, ObligationFirstPrior, UniformPrior
+    from .learned.semantic_search import build_training_examples, tree_policy_search
     from .learned.semantic_training import train_semantic_policy, write_semantic_training_jsonl
-
-    gate = _import_gate()
 
     problem = json.loads(Path(problem_path).read_text(encoding="utf-8"))
     errors = validate_problem(problem)
@@ -252,11 +242,11 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, aut
     neural_prior = ObligationFirstPrior()
     train_meta = {"examples": 0, "final_loss": None}
     if auto_train:
-        examples = gate.build_training_examples(theory, claim, n)
+        examples = build_training_examples(theory, claim, n)
         if examples:
             write_semantic_training_jsonl(examples, data_path)
             train_meta = train_semantic_policy(str(data_path), str(model_path),
-                                               epochs=epochs, seed=gate.SEED)
+                                               epochs=epochs, seed=0)
             neural_prior = NeuralSemanticPrior(str(model_path))
             uses_neural = True
 
@@ -266,7 +256,8 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, aut
         "obligation_first": ObligationFirstPrior(),
         "neural": neural_prior,
     }
-    results = {nm: gate.tree_policy_search(theory, claim, n, prior, budget=rollouts)
+    results = {nm: tree_policy_search(theory, claim, n, prior, mode="refute",
+                                      k=None, devil_budget=None, search_budget=rollouts, c_puct=2.0)
                for nm, prior in arms.items()}
     neural, uni, obl = results["neural"], results["uniform"], results["obligation_first"]
 
@@ -275,7 +266,7 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, aut
     theory_relation = claim_relation = None
     theory_bounded = claim_bounded = None
     if neural["success"] and structure_json is not None:
-        A = gate.PartialStructure.empty(theory.signature, n)
+        A = PartialStructure.empty(theory.signature, n)
         for key, val in structure_json["relations"].items():
             inside = key[key.index("(") + 1: key.rindex(")")]
             A.set_relation(key[: key.index("(")], tuple(int(x) for x in inside.split(",")),
@@ -302,7 +293,7 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, aut
         and neural["success_via"] == "guided_tree_policy"
         and theory_bounded == "ok"
         and claim_bounded == "failed"
-        and neural["claim_witness"] is not None
+        and neural["witness"] is not None
         and _structure_has_all_kinds(structure_json)
         and worse(uni) and worse(obl)
     )
@@ -333,7 +324,7 @@ def run_countermodel_capsule(problem_path, out_path=None, epochs: int = 150, aut
             "note": "auto-train fits a small problem-specific neural prior; it is NOT a universal pretrained model",
         },
         "structure": structure_json or {},
-        "witness": neural["claim_witness"] or {},
+        "witness": neural["witness"] or {},
         "ablation": {
             "uniform": {"success": uni["success"], "nodes_evaluated": uni["nodes_evaluated"]},
             "obligation_first": {"success": obl["success"], "nodes_evaluated": obl["nodes_evaluated"]},

@@ -146,6 +146,14 @@ def main(argv: "list[str] | None" = None) -> int:
     p_llm.add_argument("--mock", default="witness_match",
                        choices=["first_true", "first_false", "witness_match"])
 
+    p_arena = sub.add_parser("arena-solve",
+                             help="LOGAN arena: Σ,T,goal,resources -> GOD_WINS / DEVIL_WINS / DRAW")
+    p_arena.add_argument("problem", help="path to an arena problem JSON (examples/problems/*.json)")
+    p_arena.add_argument("--builder", default=None,
+                         choices=["neural_mcts", "uniform_baseline", "obligation_baseline"],
+                         help="override the Builder; baselines are explicit, not the LOGAN default")
+    p_arena.add_argument("--epochs", type=int, default=150)
+
     p_vp = sub.add_parser("validate-problem",
                           help="check a self-contained problem JSON (signature/theory/claim/bound)")
     p_vp.add_argument("problem", help="path to a problem JSON (examples/problems/*.json)")
@@ -347,6 +355,18 @@ def main(argv: "list[str] | None" = None) -> int:
                     "rejected": plan.rejected,
                 },
             })
+
+        if args.cmd == "arena-solve":
+            from .arena import solve_arena
+
+            try:  # outcome JSON uses ⊩/⊭; force UTF-8 stdout where supported
+                sys.stdout.reconfigure(encoding="utf-8")
+            except (AttributeError, ValueError):
+                pass
+            problem = json.loads(Path(args.problem).read_text(encoding="utf-8"))
+            result = solve_arena(problem, builder_override=args.builder, epochs=args.epochs)
+            print(json.dumps(result.to_json(), indent=2, ensure_ascii=False))
+            return 0 if result.outcome in ("GOD_WINS", "DEVIL_WINS", "DRAW") else 1
 
         if args.cmd == "validate-problem":
             from .capsule import validate_problem
