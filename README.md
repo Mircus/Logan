@@ -29,6 +29,22 @@
 
 ---
 
+## Neural Fraïssé quickstart
+
+Run a God-vs-Devil fight — an active Devil poses bounded challenges, a Builder
+replies with semantic edits, a Judge checks progress:
+
+```bash
+python -m logical_gans.modelbuilder.neural_fraisse.fight \
+  examples/problems/cycle3_fight.json
+```
+
+- Tutorial: [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md)
+- Notebook: [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
+- Evidence: [reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md)
+
+---
+
 ## LOGAN-ModelBuilder experimental subpackage
 
 A symbolic **bounded partial finite-model generator** lives at:
