@@ -64,6 +64,9 @@ python -m logical_gans.modelbuilder.neural_fraisse.fight examples/problems/cycle
 - **Tutorial:** [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md) · **Colab guide:** [docs/tutorials/colab_quickstart.md](docs/tutorials/colab_quickstart.md) · **Notebook:** [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
 - **Limitations:** proof of concept; one controlled task family; learned Builder only (the Devil is active but symbolic); not a GAN; not full FOL; no `DEVIL_WINS` yet.
 
+- ** Paper ** / preprint: [Bounded Adversarial Finite Model Construction: A LOGAN Prototype with a Symbolic Devil and a Learned Builder](https://www.researchgate.net/publication/407142849_Bounded_Adversarial_Finite_Model_Construction_A_LOGAN_Prototype_with_a_Symbolic_Devil_and_a_Learned_Builder)
+
+
 ---
 
 ## Quick Start
