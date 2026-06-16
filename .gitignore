@@ -20,6 +20,12 @@ runs/
 checkpoints/
 *.log
 
+# learned ModelBuilder generated artifacts (regenerable via the demo/CLI)
+models/
+results/training/
+results/*.json
+*.pt
+
 # Results (optional - uncomment to track CSVs in git)
 # results/*.csv
 

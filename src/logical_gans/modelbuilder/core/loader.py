@@ -128,6 +128,59 @@ def load_claim(path: PathLike) -> Claim:
     return Claim(name=obj.get("name", "claim"), clauses=clauses)
 
 
+def _parse_cell_key(key: str):
+    """'R(0,1)' -> ('R', (0, 1))."""
+    try:
+        name = key[: key.index("(")]
+        inside = key[key.index("(") + 1: key.rindex(")")]
+        args = tuple(int(x) for x in inside.split(",")) if inside.strip() else ()
+    except (ValueError, IndexError):
+        raise TheoryLoadError(f"malformed cell key {key!r} (expected like 'R(0,1)')")
+    return name, args
+
+
+def load_seed_open_world(path: PathLike, signature: Signature) -> PartialStructure:
+    """Open-world seed: listed cells are fixed; everything else stays UNKNOWN.
+
+    Distinct from ``load_structure`` (closed-world, used by ``check``), which
+    forces unlisted relation cells to FALSE. Relations are given as a map of
+    cell keys to truth strings, e.g. ``{"R(0,1)": "true"}``.
+    """
+    obj = _read_json(path)
+    if not isinstance(obj, dict) or "domain" not in obj:
+        raise TheoryLoadError(f"seed {path} needs 'domain'")
+    domain = obj["domain"]
+    n = len(domain)
+    if list(domain) != list(range(n)):
+        raise TheoryLoadError(f"domain must be 0..n-1, got {domain}")
+
+    structure = PartialStructure.empty(signature, n)  # all UNKNOWN
+
+    for key, value in obj.get("relations", {}).items():
+        name, args = _parse_cell_key(key)
+        if name not in signature.relations:
+            raise TheoryLoadError(f"relation {name!r} not in signature")
+        if len(args) != signature.relations[name].arity:
+            raise TheoryLoadError(f"relation {name!r} expects arity {signature.relations[name].arity}")
+        if any(not (0 <= a < n) for a in args):
+            raise TheoryLoadError(f"cell {key!r} out of domain 0..{n-1}")
+        structure.set_relation(name, args, Truth(value))
+
+    for cname, value in obj.get("constants", {}).items():
+        if cname not in signature.constants:
+            raise TheoryLoadError(f"constant {cname!r} not in signature")
+        if value is not None:
+            structure.set_constant(cname, int(value))
+
+    for key, value in obj.get("functions", {}).items():
+        name, args = _parse_cell_key(key)
+        if name not in signature.functions:
+            raise TheoryLoadError(f"function {name!r} not in signature")
+        structure.set_function(name, args, int(value))
+
+    return structure
+
+
 def load_structure(path: PathLike, signature: Signature) -> PartialStructure:
     obj = _read_json(path)
     if not isinstance(obj, dict) or "domain" not in obj:

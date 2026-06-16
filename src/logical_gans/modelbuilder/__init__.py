@@ -18,6 +18,7 @@ from .core.partial_structure import PartialStructure
 from .core.loader import (
     TheoryLoadError,
     load_claim,
+    load_seed_open_world,
     load_structure,
     load_theory,
 )
@@ -59,6 +60,7 @@ __all__ = [
     "load_theory",
     "load_claim",
     "load_structure",
+    "load_seed_open_world",
     "TheoryLoadError",
     "synthesize",
     "check",

@@ -1,0 +1,29 @@
+{
+  "name": "toy_mixed_signature",
+  "_comment": "An arbitrary small first-order signature -- NOT a named algebraic structure. One relation, one function, one constant.",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [{"name": "s", "arity": 1}],
+    "constants": ["a"]
+  },
+  "clauses": [
+    {
+      "name": "edge_to_succ",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"rel": "E", "args": [{"var": "x"}, {"func": "s", "args": [{"var": "x"}]}]}
+    },
+    {
+      "name": "succ_involution",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"eq": [{"func": "s", "args": [{"func": "s", "args": [{"var": "x"}]}]}, {"var": "x"}]}
+    },
+    {
+      "name": "loop_at_a",
+      "variables": [],
+      "premises": [],
+      "conclusion": {"rel": "E", "args": [{"const": "a"}, {"const": "a"}]}
+    }
+  ]
+}

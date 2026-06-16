@@ -1,0 +1,12 @@
+{
+  "name": "succ_fixes_a",
+  "_comment": "Claim to refute: s(a) = a (the successor has a fixed point at a). Refuting it forces s to be a fixed-point-free order-3 permutation (a 3-cycle), not the identity.",
+  "clauses": [
+    {
+      "name": "succ_fixes_a",
+      "variables": [],
+      "premises": [],
+      "conclusion": {"eq": [{"func": "s", "args": [{"const": "a"}]}, {"const": "a"}]}
+    }
+  ]
+}

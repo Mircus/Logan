@@ -1,0 +1,11 @@
+{
+  "name": "reflexive_E",
+  "clauses": [
+    {
+      "name": "reflexive_E",
+      "variables": ["x"],
+      "premises": [],
+      "conclusion": {"rel": "E", "args": [{"var": "x"}, {"var": "x"}]}
+    }
+  ]
+}

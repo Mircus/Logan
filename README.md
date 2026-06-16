@@ -29,20 +29,72 @@
 
 ---
 
-## LOGAN-ModelBuilder experimental subpackage
+## Neural Fraïssé / ADAMANTIUM — current release
 
-A symbolic **bounded partial finite-model generator** lives at:
+**What this release does:** bounded finite **model and countermodel construction**
+as a God-vs-Devil game. An **active symbolic Devil** poses bounded logical
+challenges, a **learned Builder** (God) replies with semantic edits, and a
+**Judge** verifies each step and logs an alternating `Devil → God → Judge` trace.
 
-```text
-src/logical_gans/modelbuilder/
+**Quickstart:**
+
+```bash
+python -m logical_gans.modelbuilder.neural_fraisse.fight \
+  examples/problems/cycle3_fight.json
 ```
 
-It is independent of torch and currently supports universal **Horn/equational
-P0 theory packs** (theories, claims, and structures as JSON data). It fills
-unknown interpretation tables while a three-valued *Devil* probes bounded axiom
-instances. See `docs/modelbuilder_architecture.md`,
-`docs/modelbuilder_output_schema.md`, and
-`docs/modelbuilder_v0_1_walkthrough.md`. Status: `v0.1.0-alpha`.
+- **Evidence:** [reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md) — held-out benchmark; the learned Builder beats active non-neural baselines.
+- **Tutorial:** [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md)
+- **Notebook:** [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
+
+**Limitations:** proof of concept; one controlled task family; learned Builder
+only (the Devil is active but **symbolic**, not learned); not a GAN; not full
+first-order logic; no `DEVIL_WINS` yet.
+
+---
+
+## Legacy / earlier strands
+
+These still run, but they are **not** the current front door — use the Neural
+Fraïssé `fight` command above.
+
+- **Kernel — LOGAN-ModelBuilder subpackage** (`src/logical_gans/modelbuilder/`):
+  the symbolic bounded partial finite-model kernel (signatures, partial
+  structures, semantic edits, a three-valued *Devil*/checker). The Neural Fraïssé
+  game is built on top of this kernel. See `docs/modelbuilder_architecture.md`.
+- **UCMT capsule / `prove-countermodel`** and **`arena-solve`**: earlier
+  single-problem countermodel and arena commands (the **LOGAN UCMT Capsule**
+  section below), superseded as the front door by the `fight` command.
+- **Finite groups / Cayley tables**: an earlier motivating arena and a candidate
+  future domain-specific layer, not the current center.
+
+---
+
+### LOGAN UCMT Capsule (legacy / earlier strand)
+
+> Earlier single-problem countermodel path, kept runnable. The current front
+> door is the Neural Fraïssé `fight` command above.
+
+A neural-guided generator builds a finite Σ-structure that, under the bounded
+*Devil* at depth *k* and budget *b*, **satisfies a theory while refuting a claim**
+(`A ⊩_{k,b} T` and `A ⊭_{k,b} C`) and emits a replayable certificate.
+
+```bash
+PYTHONPATH=src python -m logical_gans.modelbuilder.cli prove-countermodel \
+  examples/problems/cycle3_countermodel.json
+```
+
+For Σ = {E/2, s/1, a}, T = {∀x E(x,s(x)), ∀x s(s(s(x)))=x}, C = s(a)=a (n=3, k=3,
+b=800), the generator returns `s = (0→2→1→0)`, `a = 1`, so the witness is
+`s(a) = s(1) = 0 ≠ 1 = a` — i.e. `A ⊩_{3,800} T` and `A ⊭_{3,800} C`.
+
+See [reports/gates/ucmt_cycle3_capsule.md](reports/gates/ucmt_cycle3_capsule.md).
+
+**Try your own finite signature/problem:** see
+[docs/tutorials/bring_your_own_problem.md](docs/tutorials/bring_your_own_problem.md),
+start from [examples/problems/TEMPLATE_problem.json](examples/problems/TEMPLATE_problem.json),
+and run `prove-countermodel your_problem.json --auto-train` (auto-train fits a
+small problem-specific prior, not a universal pretrained model).
 
 ---
 
