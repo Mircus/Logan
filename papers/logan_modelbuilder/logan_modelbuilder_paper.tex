@@ -33,8 +33,8 @@
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\modelslog}{\Vdash}
 
-\title{\LOGAN{} as a Model and Countermodel Builder\\
-\large Bounded Adversarial Synthesis for Finite Mathematical Structures}
+\title{\LOGAN{} Neural Fra\"iss\'e: A Bounded Adversarial Framework\\
+\large for Finite Model and Countermodel Construction\footnote{The current implementation is codenamed ADAMANTIUM; the name carries no formal meaning here.}}
 \author{Mirco A. Mannucci\\HoloMathics LLC\\\texttt{mirco@holomathics.com}}
 \date{Draft: June 15, 2026}
 
@@ -70,6 +70,18 @@ The companion sub-package implements a generic, signature-parametric arena rathe
 
 \paragraph{What this is not.}
 The goal is not to claim that a bounded finite search proves a general theorem.  The goal is to add a missing semantic instrument to the mathematical workflow: a system that constructs, attacks, repairs, and explains finite models and countermodels with explicit witnesses.
+
+\section{Contributions}
+
+This paper contributes, for the current proof-of-concept release:
+\begin{enumerate}[leftmargin=2em]
+  \item a finite-signature partial-structure representation (relations, functions, constants; cells true/false/unknown), with no fixed arity bound;
+  \item a bounded adversarial \emph{Neural Fra\"iss\'e} game, played as an explicit loop \(\textsf{DevilMove}\to\textsf{BuilderReply}\to\textsf{Judge}\), in which an active symbolic Devil chooses the next bounded challenge and the Builder replies with a single semantic edit;
+  \item an \emph{arity-parametric} neural Builder policy over semantic edits (variable-length typed tokens, no maximum-arity truncation);
+  \item a held-out benchmark comparing the learned Builder (\texttt{neural\_active}) against \emph{same-active-Devil} non-neural baselines on one controlled finite-signature family; and
+  \item a runnable \texttt{fight} command and a trace-producing implementation with tests.
+\end{enumerate}
+We make no claim of general theorem proving, full first-order reasoning, or model-theoretic scalability; the evidence is a positive proof of concept on one controlled family.
 
 \section{The LOGAN Model-Building Interface}
 
@@ -296,37 +308,30 @@ Interpretation: \LOGAN{} has not merely guessed that the theorem is false.  It h
 
 \section{Repo Architecture}
 
-The companion sub-repository is meant to be integrated into the existing LOGAN repo, but it is packaged so that it can also run independently.
+The code lives under \texttt{src/logical\_gans/modelbuilder/}, integrated into the existing LOGAN tree:
 
 \begin{lstlisting}[basicstyle=\ttfamily\small]
-logan_modelbuilder/
-  pyproject.toml
-  README.md
-  src/logical_gans/modelbuilder/
-    structures.py
-    witnesses.py
-    engine.py
-    cli.py
-    theories/
-      groups.py
-    opponents/
-      horn_group.py
-    builders/
-      group_builder.py
-  experiments/
-    e1_groups.py
-  tests/
-    test_groups.py
-  scripts/
-    run_all.sh
+src/logical_gans/modelbuilder/
+  core/            # signature, partial_structure, devil, obligations,
+                   # witness, eval, depth
+  learned/         # semantic_actions, semantic_token_features,
+                   # semantic_policy_net, priors, semantic_search,
+                   # semantic_training
+  neural_fraisse/  # tasks, game, players, training, benchmark, fight
+                   #   <-- current center
+  arena.py  capsule.py  cli.py   # legacy / earlier strands (still runnable)
+examples/problems/cycle3_fight.json
+tests/    reports/neural_fraisse_poc.md    docs/tutorials/    notebooks/
 \end{lstlisting}
 
 \paragraph{Design choice.}
-The namespace \texttt{logical\_gans.modelbuilder} is intentional: this should feel like a LOGAN companion module, not an unrelated new package.
+The namespace \texttt{logical\_gans.modelbuilder} is intentional: a LOGAN companion module, not an unrelated package.  The \texttt{arena}/\texttt{capsule} commands are earlier strands; the current front door is \texttt{neural\_fraisse.fight} (Section~\ref{sec:fight}).
 
-\section{Experimental Plan}
+\section{Planned Group-Arena Experiments (future)}
 
-\subsection{P0 experiments}
+\emph{Note.} The table below is a \emph{plan} for the future group-specific arena of Section~\ref{sec:groups}; it is not current results.  The current, implemented results are the Neural Fra\"iss\'e benchmark of Section~\ref{sec:nf-bench}.
+
+\subsection{P0 experiments (planned)}
 
 \begin{center}
 \begin{tabular}{lllll}
@@ -384,11 +389,75 @@ The roles of Definition~\ref{def:game} are realized concretely:
   \item \Judge{} verifies each step with the bounded checker \(\texttt{run\_devil\_bounded}(k,b)\) and logs the alternating trace; \(A\modelslog_{k,b}T\) is operationalized as survival of the bounded checker.
 \end{itemize}
 
+\subsection{Game objects}
+
+The implementation makes the following objects explicit.
+\begin{definition}[Core objects]\label{def:objects}
+Over a finite signature \(\Sigma\):
+\begin{itemize}[leftmargin=2em]
+  \item a \emph{partial \(\Sigma\)-structure} \(A\) assigns each relation cell a value in \(\{\mathsf{true},\mathsf{false},\mathsf{unknown}\}\) and each function/constant cell a domain value or \(\mathsf{unknown}\);
+  \item a \emph{semantic edit} is one of \(\mathsf{SetRelation}(R,\bar a,v)\), \(\mathsf{SetFunction}(f,\bar a,v)\), \(\mathsf{SetConstant}(c,v)\), fixing one currently-\(\mathsf{unknown}\) cell;
+  \item a \emph{GameState} is \((A,\,\mathsf{task},\,\mathsf{trace},\,\mathsf{budget})\);
+  \item a \emph{DevilMove} is \((\mathsf{kind},\mathsf{clause},\mathsf{assignment},\mathsf{target\_cell},\mathsf{reason})\) with \(\mathsf{kind}\in\{\mathsf{ChallengeClauseInstance},\mathsf{ChallengeGoalCell}\}\);
+  \item a \emph{BuilderReply} is a semantic edit fixing \(\mathsf{target\_cell}\);
+  \item a \emph{Judge event} records the post-reply status \(\in\{\mathsf{progress},\mathsf{builder\_survives},\mathsf{theory\_failed},\mathsf{dead\_end}\}\);
+  \item the \emph{Outcome} is one of \(\mathsf{GOD\_WINS}\), \(\mathsf{DRAW}\), \(\mathsf{DEVIL\_WINS}\).
+\end{itemize}
+\end{definition}
+
+\begin{remark}[Honest outcome set]
+The current implementation returns only \(\mathsf{GOD\_WINS}\) (a Builder win the Judge verifies at \((k,b)\)) or \(\mathsf{DRAW}\) (bounded resources exhausted with no verified win).  \(\mathsf{DEVIL\_WINS}\) is reserved for a future \emph{certified} bounded obstruction and is not emitted.
+\end{remark}
+
 \paragraph{Arity-parametric learned Builder.}
 Each candidate edit is encoded as a \emph{variable-length} sequence of typed tokens (kind; symbol; one positional token per argument; value; game-context), with no fixed maximum arity.  The learned Builder is a small token policy trained by imitation on winning trajectories taken from \emph{training-size} tasks only, and is evaluated on disjoint, larger held-out sizes.
 
 \paragraph{Methods compared.}
 Holding the active Devil fixed, three Builders are compared---random reply (\texttt{uniform}), symbolic suggested-value reply (\texttt{obligation\_first}), and the learned reply (\texttt{neural\_active})---together with a fourth method, \texttt{neural\_passive}, which uses the learned policy in free search \emph{without} the active Devil.
+
+\subsection{Algorithms}
+
+\begin{algorithm}[h]
+\caption{Active Neural Fra\"iss\'e fight}
+\begin{algorithmic}[1]
+\Require task \((\Sigma,T,\text{goal},n,k,b)\), Devil \(\delta\), Builder \(\beta\), node budget \(N\)
+\State \(A\gets\) empty partial \(\Sigma\)-structure on domain \(\{0,\dots,n-1\}\); search via DFS with backtracking
+\While{nodes \(<N\)}
+  \State \(\text{status}\gets \Judge(A)\) \Comment{via \(\texttt{run\_devil\_bounded}(k,b)\)}
+  \If{\(\text{status}=\mathsf{builder\_survives}\)} \Return \(\mathsf{GOD\_WINS}\), \(A\), trace \EndIf
+  \If{\(\text{status}\in\{\mathsf{theory\_failed},\mathsf{dead\_end}\}\)} backtrack \EndIf
+  \State \(m\gets\delta.\textsc{chooseMove}(A)\) \Comment{DevilMove: the blocking cell}
+  \State try \(\beta\)'s ordered replies for \(m\)'s cell; recurse; on exhaustion backtrack
+\EndWhile
+\State \Return \(\mathsf{DRAW}\), trace
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[h]
+\caption{Training the Builder from active-game traces}
+\begin{algorithmic}[1]
+\Require training tasks (small sizes)
+\For{each training task}
+  \State find a winning trajectory (Algorithm~1 with a generous budget)
+  \For{each \((A,m,\text{edit})\) on the winning path}
+    \State emit example: tokens of all legal replies to \(m\); target \(=\) index of \(\text{edit}\)
+  \EndFor
+\EndFor
+\State train the token policy by cross-entropy on the (candidates, target) examples
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[h]
+\caption{Benchmark evaluation}
+\begin{algorithmic}[1]
+\Require train sizes, disjoint test sizes, tasks per seed, budget, seeds
+\State train the Builder on train-size tasks only (Algorithm~2)
+\For{each held-out test task and each method \(\in\{\texttt{uniform},\texttt{obligation\_first},\texttt{neural\_passive},\texttt{neural\_active}\}\)}
+  \State run the fight (or free search for \texttt{neural\_passive}); record outcome and nodes
+\EndFor
+\State aggregate success rate, median nodes, and draws per method; emit verdict
+\end{algorithmic}
+\end{algorithm}
 
 \section{Benchmark}\label{sec:nf-bench}
 
@@ -413,6 +482,9 @@ method & mean success & mean median nodes & total draws \\
 \texttt{neural\_passive} = learned policy without the active Devil (old free search);
 \texttt{neural\_active} = active Devil + learned Builder.
 Because \texttt{uniform} and \texttt{obligation\_first} share the \emph{same} active Devil as \texttt{neural\_active}, the comparison isolates the learned Builder.  The verdict is \(\mathsf{NEURAL\_FRAISSE\_POC}=\mathsf{PASS}\) on all three seeds: \texttt{neural\_active} beats both same-active-Devil non-neural Builders on success rate, with far fewer nodes and zero draws.
+
+\paragraph{Interpretation.}
+The evidence is positive for \emph{one controlled cyclic task family} with held-out domain sizes.  It shows that, holding the active Devil fixed, a learned Builder beats random and symbolic Builders.  It does \emph{not} establish general model-theoretic scalability, performance on other signatures or theories, or any claim beyond this family.
 
 \section{The Fight Command}\label{sec:fight}
 
@@ -440,13 +512,15 @@ Outcomes are \(\mathsf{GOD\_WINS}\) or \(\mathsf{DRAW}\).  The two builder modes
 
 \begin{itemize}[leftmargin=2em]
   \item one controlled cyclic task family;
+  \item bounded finite structures only;
+  \item a controlled formula fragment (universal Horn / equational), not full first-order logic;
   \item active \emph{symbolic} Devil, not a learned Devil;
   \item learned Builder only;
-  \item the Builder uses generic game-context features (including collision/image features);
+  \item the Builder uses engineered generic game-context features (including collision/image features);
   \item not a GAN;
-  \item not full first-order logic;
   \item not a theorem prover;
-  \item \(\mathsf{DEVIL\_WINS}\) (certified bounded impossibility) is not implemented in this release.
+  \item no \(\mathsf{DEVIL\_WINS}\) yet (certified bounded impossibility is future work);
+  \item no general scalability claim.
 \end{itemize}
 
 \section{Relation to UCMT}
@@ -462,6 +536,20 @@ This paper should be read as the implementation-facing companion to the UCMT lin
 
 The deeper thesis is that model theory can become operational.  A theory is not only a collection of sentences.  It determines an attack surface.  A model-building system is not only a search routine.  It is an adversarial dialogue between construction and falsification.
 
+\section{Related Work}
+
+\paragraph{Ehrenfeucht--Fra\"iss\'e games and finite model theory.}
+The bounded-challenge view descends from Ehrenfeucht--Fra\"iss\'e games \cite{Ehrenfeucht1961,Fraisse1954} and finite model theory \cite{Libkin2004}.  Our Devil plays a one-sided, construction-time variant: it challenges a single partial structure rather than refereeing equivalence between two fixed structures.
+
+\paragraph{Finite model and countermodel finding.}
+Classical finite model finders---Mace4 \cite{McCune2003} and Paradox \cite{ClaessenSorensson2003}---and SAT/SMT-backed search are the standard tools for building finite (counter)models.  We do not claim to outperform them as solvers; the contribution is a \emph{learned, game-structured} Builder whose first-move choices reduce backtracking, with a symbolic bounded checker as Judge.
+
+\paragraph{Neural-guided search and neural theorem proving.}
+Learned guidance for symbolic search appears in neural-guided proof search and premise selection \cite{Polu2020}.  That line is proof-side (build a derivation); ours is model-side (build a structure).  Proof assistants remain the complementary syntactic instrument.
+
+\paragraph{Adversarial learning.}
+The ``Logical GAN'' framing is inspired by adversarial training \cite{Goodfellow2014}.  We stress that the current release is \emph{not} a GAN: only the Builder is learned and the Devil is symbolic.  A learned, adaptive Devil---a genuine adversarial pair---is future work.
+
 \section{Conclusion}
 
 \LOGAN{} ModelBuilder is a model-side mathematical assistant.  It does not replace theorem provers; it supplies the finite semantic evidence that should often come before proof search.  The current Neural Fra\"iss\'e proof of concept already captures the essential pattern over a generic finite signature: an active Devil challenges, a learned Builder replies with semantic edits, and a Judge distinguishes model certificates from counterexample certificates---with held-out evidence that the learned Builder beats non-neural Builders under the same active Devil.  The next steps are to make the \emph{Devil} learned and adaptive (an actual adversarial pair), to broaden beyond the single cyclic task family, and to grow domain-specific arenas (groups, monoids, graphs, arithmetic fragments, finite categories) on top of the generic substrate.
@@ -471,6 +559,18 @@ The deeper thesis is that model theory can become operational.  A theory is not 
 \section{Claude Development Checklist}
 
 The companion file \texttt{CLAUDE\_ACTION\_LIST.md} records the earlier group-arena checklist (partial Cayley-table repair, budgeted challenge sampling, etc.).  It reflects the motivating strand of Section~\ref{sec:groups}, not the current Neural Fra\"iss\'e release, whose status and limitations are given in Sections~\ref{sec:nf}--\ref{sec:nf-limits}.
+
+\section{Reproducibility}
+
+The proof of concept is reproduced from the repository root with:
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+python -m logical_gans.modelbuilder.neural_fraisse.fight \
+  examples/problems/cycle3_fight.json
+
+python -m logical_gans.modelbuilder.neural_fraisse.benchmark \
+  --train-sizes 3,4 --test-sizes 5,6 --tasks 50 --budget 800 --seed 0
+\end{lstlisting}
+Seeds \(0,1,2\) give the cross-seed aggregate of Section~\ref{sec:nf-bench}; the committed evidence is \texttt{reports/neural\_fraisse\_poc.md}.  The test suite runs with \texttt{pytest -q}.
 
 \begin{thebibliography}{9}
 
@@ -498,6 +598,31 @@ M. A. Mannucci.
 R. Alur, R. Singh, D. Fisman, and A. Solar-Lezama.
 \newblock Search-based program synthesis.
 \newblock \emph{Communications of the ACM}, 61(12):84--93, 2018.
+
+\bibitem{Libkin2004}
+L. Libkin.
+\newblock \emph{Elements of Finite Model Theory}.
+\newblock Springer, 2004.
+
+\bibitem{McCune2003}
+W. McCune.
+\newblock Mace4 reference manual and guide.
+\newblock Technical Report ANL/MCS-TM-264, Argonne National Laboratory, 2003.
+
+\bibitem{ClaessenSorensson2003}
+K. Claessen and N. S\"orensson.
+\newblock New techniques that improve MACE-style finite model finding.
+\newblock In \emph{CADE-19 Workshop on Model Computation}, 2003.
+
+\bibitem{Polu2020}
+S. Polu and I. Sutskever.
+\newblock Generative language modeling for automated theorem proving.
+\newblock \emph{arXiv:2009.03393}, 2020.
+
+\bibitem{Goodfellow2014}
+I. Goodfellow et al.
+\newblock Generative adversarial nets.
+\newblock In \emph{NeurIPS}, 2014.
 
 \end{thebibliography}
 
