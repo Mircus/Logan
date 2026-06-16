@@ -1,102 +1,68 @@
-# LOGAN / ADAMANTIUM
+# LOGAN: Logical GANs
 
-**Neural Fraïssé model-building POC: God and Devil fight over finite structures.**
+<p align="center">
+  <img src="docs/assets/logical-gans-logo-black-1024.png" alt="LOGAN Logo" width="600"/>
+</p>
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mircus/Logan/blob/master/notebooks/neural_fraisse_quickstart.ipynb)
+**Adversarial Learning through Ehrenfeucht-Fra\"isse Games**
+
+[![CI](https://github.com/Mircus/Logan/workflows/CI/badge.svg)](https://github.com/Mircus/Logan/actions)
 [![License: HNCL](https://img.shields.io/badge/License-HNCL-blue.svg)](LICENSE.txt)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-## Quickstart in Colab
+---
 
-Click the badge above, then **Runtime → Run all**. The first cell clones and
-installs LOGAN; you then see a God-vs-Devil fight trace, the final structure, a
-witness, and a small held-out benchmark table.
+## Overview
 
-## Run locally
+**LOGAN** (Logical GANs) bridges adversarial machine learning and mathematical logic by framing GAN training as an Ehrenfeucht-Fra\"isse (EF) game. The discriminator plays **Devil**, probing for logical faults up to depth *k*, while the generator plays **Builder**, producing structures indistinguishable at that depth.
+
+### Key Features
+
+- **Bounded Logical Framework**: Explicit control via depth parameter *k*
+- **EF Game Simulator**: Exact and approximate EF-distance computation
+- **MSO Property Library**: Efficient checkers for bipartite, planarity, tree, connectivity, triangles
+- **Logical Loss**: Combines EF round-resilience with fast certificate terms
+- **Fully Reproducible**: Four experiments including real neural GAN training
+- **Real GAN Training**: PyTorch-based adversarial training with 5-14% improvements demonstrated
+- **Framework Validated**: Both simulation (92-98% satisfaction) and real training (26-42% satisfaction)
+- **Interpretable Failures**: Small, human-comprehensible witnesses instead of opaque losses
+
+---
+
+## LOGAN-ModelBuilder experimental subpackage
+
+A symbolic **bounded partial finite-model generator** lives at:
+
+```text
+src/logical_gans/modelbuilder/
+```
+
+It is independent of torch and currently supports universal **Horn/equational
+P0 theory packs** (theories, claims, and structures as JSON data). It fills
+unknown interpretation tables while a three-valued *Devil* probes bounded axiom
+instances. See `docs/modelbuilder_architecture.md`,
+`docs/modelbuilder_output_schema.md`, and
+`docs/modelbuilder_v0_1_walkthrough.md`. Status: `v0.1.0-alpha`.
+
+---
+
+## Neural Fraïssé / ADAMANTIUM (current model-builder release)
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mircus/Logan/blob/master/notebooks/neural_fraisse_quickstart.ipynb)
+
+The current model-builder release runs **bounded model/countermodel construction**
+as a God-vs-Devil game: an **active symbolic Devil** poses bounded challenges, a
+**learned Builder** (God) replies with semantic edits, and a **Judge** verifies
+each step and logs a `Devil → God → Judge` trace.
 
 ```bash
 python -m logical_gans.modelbuilder.neural_fraisse.fight examples/problems/cycle3_fight.json
 ```
 
-## What this release does
-
-- You give a finite signature, assumptions, a goal, and resource bounds.
-- The **Devil** chooses bounded local challenges.
-- **God/Builder** replies with semantic edits.
-- The **Judge** checks progress.
-- Output: a `Devil → God → Judge` trace, the final structure, and a witness when found.
-
-## Evidence
-
-Held-out benchmark (the learned Builder beats active non-neural baselines):
-[reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md).
-
-## Limitations
-
-- one controlled cyclic task family
-- active symbolic Devil, not learned Devil
-- learned Builder only
-- not a GAN
-- not full FOL
-- not a theorem prover
-- no `DEVIL_WINS` yet
-
-## Learn more
-
-- Tutorial: [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md)
-- Colab guide: [docs/tutorials/colab_quickstart.md](docs/tutorials/colab_quickstart.md)
-- Notebook: [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
-
----
-
-## Earlier LOGAN strands
-
-These predate the Neural Fraïssé release and are kept for history; they are **not**
-the current front door (use the `fight` command above).
-
-### Original LOGAN (EF games, GAN, MSO)
-
-**LOGAN** (Logical GANs) bridges adversarial machine learning and mathematical logic by framing GAN training as an Ehrenfeucht-Fra\"isse (EF) game. The discriminator plays **Devil**, probing for logical faults up to depth *k*, while the generator plays **Builder**, producing structures indistinguishable at that depth. That strand provides a bounded logical framework (depth *k*), an EF game simulator, an MSO property library (bipartite, planarity, tree, connectivity, triangles), a logical loss, four reproducible experiments including PyTorch GAN training, and interpretable witnesses. See the experiments and core-components sections below.
-
-### LOGAN-ModelBuilder kernel and legacy commands
-
-- **Kernel — LOGAN-ModelBuilder subpackage** (`src/logical_gans/modelbuilder/`):
-  the symbolic bounded partial finite-model kernel (signatures, partial
-  structures, semantic edits, a three-valued *Devil*/checker). The Neural Fraïssé
-  game is built on top of this kernel. See `docs/modelbuilder_architecture.md`.
-- **UCMT capsule / `prove-countermodel`** and **`arena-solve`**: earlier
-  single-problem countermodel and arena commands (the **LOGAN UCMT Capsule**
-  subsection below), superseded as the front door by the `fight` command.
-- **Finite groups / Cayley tables**: an earlier motivating arena and a candidate
-  future domain-specific layer, not the current center.
-
----
-
-### LOGAN UCMT Capsule (legacy / earlier strand)
-
-> Earlier single-problem countermodel path, kept runnable. The current front
-> door is the Neural Fraïssé `fight` command above.
-
-A neural-guided generator builds a finite Σ-structure that, under the bounded
-*Devil* at depth *k* and budget *b*, **satisfies a theory while refuting a claim**
-(`A ⊩_{k,b} T` and `A ⊭_{k,b} C`) and emits a replayable certificate.
-
-```bash
-PYTHONPATH=src python -m logical_gans.modelbuilder.cli prove-countermodel \
-  examples/problems/cycle3_countermodel.json
-```
-
-For Σ = {E/2, s/1, a}, T = {∀x E(x,s(x)), ∀x s(s(s(x)))=x}, C = s(a)=a (n=3, k=3,
-b=800), the generator returns `s = (0→2→1→0)`, `a = 1`, so the witness is
-`s(a) = s(1) = 0 ≠ 1 = a` — i.e. `A ⊩_{3,800} T` and `A ⊭_{3,800} C`.
-
-See [reports/gates/ucmt_cycle3_capsule.md](reports/gates/ucmt_cycle3_capsule.md).
-
-**Try your own finite signature/problem:** see
-[docs/tutorials/bring_your_own_problem.md](docs/tutorials/bring_your_own_problem.md),
-start from [examples/problems/TEMPLATE_problem.json](examples/problems/TEMPLATE_problem.json),
-and run `prove-countermodel your_problem.json --auto-train` (auto-train fits a
-small problem-specific prior, not a universal pretrained model).
+- **Colab:** click the badge above, then Runtime → Run all.
+- **Evidence:** [reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md) — held-out benchmark; the learned Builder beats active non-neural baselines.
+- **Tutorial:** [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md) · **Colab guide:** [docs/tutorials/colab_quickstart.md](docs/tutorials/colab_quickstart.md) · **Notebook:** [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
+- **Limitations:** proof of concept; one controlled task family; learned Builder only (the Devil is active but symbolic); not a GAN; not full FOL; no `DEVIL_WINS` yet.
 
 ---
 
