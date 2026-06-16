@@ -29,6 +29,10 @@ results/*.json
 # Results (optional - uncomment to track CSVs in git)
 # results/*.csv
 
+# Internal dev/audit artifacts (kept local, not published)
+papers/logan_modelbuilder/CLAUDE_ACTION_LIST.md
+reports/gates/
+
 # OS
 .DS_Store
 Thumbs.db
