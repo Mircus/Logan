@@ -33,6 +33,10 @@ results/*.json
 papers/logan_modelbuilder/CLAUDE_ACTION_LIST.md
 reports/gates/
 
+# Paper kept local only, not published in the repo
+papers/logan_modelbuilder/logan_modelbuilder_paper.tex
+papers/logan_modelbuilder/logan_modelbuilder_paper.pdf
+
 # OS
 .DS_Store
 Thumbs.db
