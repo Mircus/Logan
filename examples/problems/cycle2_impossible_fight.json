@@ -1,0 +1,29 @@
+{
+  "name": "cycle2_impossible_fight",
+  "signature": {
+    "relations": [{"name": "E", "arity": 2}],
+    "functions": [{"name": "s", "arity": 1}],
+    "constants": ["a"]
+  },
+  "theory": [
+    "forall x: s(s(s(x))) = x"
+  ],
+  "goal": {
+    "mode": "refute",
+    "claim": "s(a) = a"
+  },
+  "resources": {
+    "domain_size": 2,
+    "depth": 3,
+    "budget": 800,
+    "max_rounds": 50
+  },
+  "builder": {
+    "mode": "active_symbolic",
+    "train": "auto"
+  },
+  "obstruction_hint": {
+    "reason": "s^3=id forces s=id on a 2-element domain",
+    "consequence": "s(a)=a unavoidable"
+  }
+}

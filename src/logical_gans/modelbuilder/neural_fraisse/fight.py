@@ -94,13 +94,25 @@ def run_fight(problem: dict, builder_mode: str, epochs: int = 120):
         raise ValueError(f"unknown builder mode {builder_mode!r}")
 
     out = play_game(task, devil, builder, budget)
-    outcome = "GOD_WINS" if out.outcome == "won" else "DRAW"
-    structure, witness = (None, None)
+    structure, witness, certificate = (None, None, None)
     if out.outcome == "won":
+        outcome = "GOD_WINS"
         structure, witness = _final_structure_and_witness(task, out.decisions)
+    elif out.outcome == "lost":
+        # "lost" = the DFS frontier closed with the budget NOT exhausted. Only call
+        # it a Devil win if the symbolic Judge independently verifies an obstruction.
+        from .certificate import build_obstruction_certificate
+        cert = build_obstruction_certificate(task, hint=problem.get("obstruction_hint"))
+        cert["budget_exhausted"] = False
+        if cert.get("judge_verified"):
+            outcome, certificate = "DEVIL_WINS", cert
+        else:
+            outcome = "DRAW"
+    else:  # "draw" = budget exhausted
+        outcome = "DRAW"
     return {"task": task, "builder_mode": builder_mode, "outcome": outcome,
             "decisions": out.decisions, "events": out.trace, "nodes": out.nodes,
-            "structure": structure, "witness": witness}
+            "structure": structure, "witness": witness, "certificate": certificate}
 
 
 # --------------------------------------------------------------------------
@@ -168,9 +180,22 @@ def render(result, problem) -> str:
         if result["witness"]:
             lines.append("Witness:")
             lines.append(f"  {result['witness'].get('message', '(witness)')}")
+    elif result["outcome"] == "DEVIL_WINS":
+        c = result.get("certificate") or {}
+        lines.append("  (Devil obstructed: no legal Builder completion achieves the goal within the bounds)")
+        lines.append("Obstruction certificate:")
+        lines.append(f"  domain_size: {c.get('domain_size')}")
+        if c.get("reason") is not None:
+            lines.append(f"  reason: {c['reason']}")
+        if c.get("consequence") is not None:
+            lines.append(f"  consequence: {c['consequence']}")
+        lines.append(f"  completions_checked: {c.get('completions_checked')}")
+        lines.append(f"  winning_completions: {c.get('winning_completions')}")
+        lines.append(f"  budget_exhausted: {str(bool(c.get('budget_exhausted', False))).lower()}")
+        lines.append(f"  judge_verified: {str(bool(c.get('judge_verified', False))).lower()}")
     else:
-        lines.append("  DRAW: ran out of bounded search/budget without a verified win. "
-                     "(DEVIL_WINS is not implemented in this release.)")
+        lines.append("  DRAW: ran out of bounded search/budget without a verified win "
+                     "or a verified obstruction.")
     return "\n".join(lines)
 
 
