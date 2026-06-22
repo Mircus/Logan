@@ -7,13 +7,15 @@ neural-active methods, so those three differ ONLY in the Builder's reply orderin
 from __future__ import annotations
 
 import random
+from itertools import product
 from typing import List
 
-from ..core.devil import run_devil_bounded
+from ..core.depth import clause_depth
+from ..core.devil import DevilResult, _instance_status, _make_witness, run_devil_bounded
 from ..core.obligations import extract_obligation
 from ..learned.semantic_actions import SemanticEdit, SetFunction
 from ..learned.semantic_token_features import TOKEN_DIM, edit_tokens
-from .game import DevilMove
+from .game import DevilMove, GameState
 
 _CONTEXT_TYPE_INDEX = 4  # "context" slot in semantic_token_features._TYPES
 
@@ -23,29 +25,64 @@ def _cell(obl) -> dict:
             "args": list(obl.args) if obl.args else None}
 
 
+def _move_key(kind, clause_name, assignment, cell):
+    return (kind, clause_name, tuple(sorted((assignment or {}).items())),
+            cell["kind"], cell["symbol"],
+            tuple(cell["args"]) if cell["args"] else None)
+
+
+def _moves_from_clauses(structure, clauses, k, kind, reason, seen) -> List[DevilMove]:
+    """Every UNKNOWN (blockable, Builder-answerable) clause instance in the
+    kernel's deterministic clause/lexicographic order, as DevilMoves. Uses the
+    kernel's own instance evaluator so the ordering matches run_devil_bounded."""
+    out: List[DevilMove] = []
+    for clause in clauses:
+        if k is not None and clause_depth(clause) > k:
+            continue
+        for values in product(structure.domain, repeat=len(clause.variables)):
+            assignment = dict(zip(clause.variables, values))
+            status, premise_truths, conclusion = _instance_status(clause, assignment, structure)
+            if status != "unknown":          # "ok" (satisfied/vacuous) or "failed" (no fillable cell)
+                continue
+            witness = _make_witness(status, clause, assignment, premise_truths, conclusion, structure)
+            obl = extract_obligation(structure, DevilResult(status, witness, clause, assignment))
+            if obl is None:
+                continue
+            cell = _cell(obl)
+            key = _move_key(kind, clause.name, assignment, cell)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(DevilMove(kind, clause.name, dict(assignment), cell, reason, obligation=obl))
+    return out
+
+
+def enumerate_legal_devil_moves(state: GameState) -> List[DevilMove]:
+    """All legal bounded Devil challenges at `state`, in the kernel's deterministic
+    order. A legal move is an UNKNOWN clause instance the Builder can answer: a
+    theory-defense obligation, or -- once T is satisfied, in refute mode -- an
+    undetermined claim cell. The symbolic Devil picks the first of these."""
+    structure, task = state.structure, state.task
+    seen: set = set()
+    moves = _moves_from_clauses(structure, task.theory.clauses, task.depth,
+                                "ChallengeClauseInstance", "theory clause instance blocked", seen)
+    if task.mode == "refute":
+        dT = run_devil_bounded(structure, task.theory.clauses, k=task.depth, budget=None)
+        if dT.status == "ok":
+            moves += _moves_from_clauses(structure, task.goal.clauses, task.depth,
+                                         "ChallengeGoalCell", "claim cell undetermined", seen)
+    return moves
+
+
 class SymbolicActiveDevil:
     """Chooses the next bounded challenge: a theory-defense obligation if the
-    structure does not yet model T, else (refute mode) a claim cell to commit."""
+    structure does not yet model T, else (refute mode) a claim cell to commit.
+
+    Chooses the first move from the legal Devil-move enumeration (Gate R3)."""
 
     def choose_move(self, structure, task):
-        dT = run_devil_bounded(structure, task.theory.clauses, k=task.depth, budget=None)
-        if dT.status != "ok":
-            obl = extract_obligation(structure, dT)
-            if obl is not None:
-                return DevilMove("ChallengeClauseInstance",
-                                 dT.clause.name if dT.clause else None,
-                                 dict(dT.assignment) if dT.assignment else None,
-                                 _cell(obl), "theory clause instance blocked", obligation=obl)
-        if task.mode == "refute":
-            dC = run_devil_bounded(structure, task.goal.clauses, k=task.depth, budget=None)
-            if dC.status == "unknown":
-                obl = extract_obligation(structure, dC)
-                if obl is not None:
-                    return DevilMove("ChallengeGoalCell",
-                                     dC.clause.name if dC.clause else None,
-                                     dict(dC.assignment) if dC.assignment else None,
-                                     _cell(obl), "claim cell undetermined", obligation=obl)
-        return None
+        moves = enumerate_legal_devil_moves(GameState(structure, task))
+        return moves[0] if moves else None
 
 
 class UniformBuilder:
