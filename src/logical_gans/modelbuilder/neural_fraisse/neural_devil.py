@@ -22,16 +22,19 @@ from .players import enumerate_legal_devil_moves
 
 _KINDS = ("ChallengeClauseInstance", "ChallengeGoalCell")
 _TARGET_KINDS = ("relation", "function", "constant")
-_N_SYMBOL_BUCKETS = 8
+_N_BUCKETS = 8
 
-# kind one-hot (2) + target-kind one-hot (3) + symbol bucket one-hot (8) + 4 scalars
-FEATURE_DIM = len(_KINDS) + len(_TARGET_KINDS) + _N_SYMBOL_BUCKETS + 4
+# kind one-hot (2) + target-kind one-hot (3) + symbol/clause/args bucket one-hots
+# (3 * 8) + 5 scalars. Symbol, clause name, and the target argument tuple are all
+# hashed so that distinct legal challenges (e.g. s(0) vs s(1), axiom_0 vs axiom_1)
+# get distinct feature vectors -- otherwise the policy would score them equally.
+FEATURE_DIM = len(_KINDS) + len(_TARGET_KINDS) + 3 * _N_BUCKETS + 5
 
 
-def _symbol_bucket(symbol: Optional[str]) -> int:
-    if not symbol:
+def _bucket(text: Optional[str]) -> int:
+    if not text:
         return 0
-    return zlib.crc32(symbol.encode("utf-8")) % _N_SYMBOL_BUCKETS
+    return zlib.crc32(text.encode("utf-8")) % _N_BUCKETS
 
 
 def _assigned_cells(structure) -> int:
@@ -42,8 +45,17 @@ def _assigned_cells(structure) -> int:
     return n
 
 
+def _onehot(feats, i, bucket):
+    for b in range(_N_BUCKETS):
+        feats[i + b] = 1.0 if b == bucket else 0.0
+    return i + _N_BUCKETS
+
+
 def move_features(state: GameState, move: DevilMove, num_moves: int) -> List[float]:
-    """Encode a (GameState, DevilMove) pair into a fixed-length feature vector."""
+    """Encode a (GameState, DevilMove) pair into a fixed-length feature vector.
+
+    Distinct legal challenges must map to distinct vectors, so the target symbol,
+    the clause name, and the target argument tuple are each hashed into one-hots."""
     feats = [0.0] * FEATURE_DIM
     i = 0
     # move kind one-hot
@@ -55,17 +67,18 @@ def move_features(state: GameState, move: DevilMove, num_moves: int) -> List[flo
     for tk in _TARGET_KINDS:
         feats[i] = 1.0 if cell.get("kind") == tk else 0.0
         i += 1
-    # target symbol hashed bucket one-hot
-    bucket = _symbol_bucket(cell.get("symbol"))
-    for b in range(_N_SYMBOL_BUCKETS):
-        feats[i] = 1.0 if b == bucket else 0.0
-        i += 1
-    # scalars: domain size, assigned cells, pending obligations, target arity
+    # hashed one-hots: target symbol, clause name, target argument tuple
     args = cell.get("args") or []
-    feats[i] = float(len(state.structure.domain)); i += 1
-    feats[i] = float(_assigned_cells(state.structure)); i += 1
-    feats[i] = float(num_moves); i += 1
-    feats[i] = float(len(args)); i += 1
+    i = _onehot(feats, i, _bucket(cell.get("symbol")))
+    i = _onehot(feats, i, _bucket(move.clause_name))
+    i = _onehot(feats, i, _bucket(str(tuple(args))))
+    # scalars (lightly scaled): domain, assigned cells, pending moves, arity, first arg
+    n = max(1, len(state.structure.domain))
+    feats[i] = len(state.structure.domain) / 10.0; i += 1
+    feats[i] = _assigned_cells(state.structure) / 10.0; i += 1
+    feats[i] = num_moves / 10.0; i += 1
+    feats[i] = len(args) / 4.0; i += 1
+    feats[i] = (args[0] / n) if args else -1.0; i += 1
     return feats
 
 
