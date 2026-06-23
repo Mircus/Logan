@@ -46,25 +46,45 @@ instances. See `docs/modelbuilder_architecture.md`,
 
 ---
 
-## Neural Fraïssé / ADAMANTIUM (current model-builder release)
+## Neural Fraïssé / ADAMANTIUM (experimental ultraconstructive prototype)
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Mircus/Logan/blob/master/notebooks/neural_fraisse_quickstart.ipynb)
+LOGAN / ADAMANTIUM is an experimental ultraconstructive model-building prototype.
+It runs bounded finite **God–Devil–Judge** episodes over partial finite structures.
 
-The current model-builder release runs **bounded model/countermodel construction**
-as a God-vs-Devil game: an **active symbolic Devil** poses bounded challenges, a
-**learned Builder** (God) replies with semantic edits, and a **Judge** verifies
-each step and logs a `Devil → God → Judge` trace.
+It demonstrates:
+- bounded finite God–Devil–Judge episodes
+- `GOD_WINS` / `DRAW` / `DEVIL_WINS`
+- bounded obstruction certificates
+- legal Devil move enumeration
+- a `NeuralDevilPolicy` over legal symbolic challenges
+- a `NeuralGodPolicy` over legal Builder replies
+- minimal judged co-training on controlled cyclic tasks
+
+It does **not** claim:
+- complete theorem proving
+- complete finite model finding
+- general model-theoretic completeness
+- a production-level logic-driven GAN
+- a commercial ADAMANTIUM system
+
+### Demos
 
 ```bash
-python -m logical_gans.modelbuilder.neural_fraisse.fight examples/problems/cycle3_fight.json
+# Certified DEVIL_WINS with a bounded obstruction certificate (n=2 cyclic impossibility)
+python -m logical_gans.modelbuilder.neural_fraisse.fight examples/problems/cycle2_impossible_fight.json
+
+# Minimal Prototype-1 demo: neural Devil + neural God + symbolic Judge (GOD_WINS and DEVIL_WINS)
+python -m logical_gans.modelbuilder.neural_fraisse.mirco_gan_demo
+
+# Minimal adversarial training loop (trained Devil, fixed God)
+python -m logical_gans.modelbuilder.neural_fraisse.adversarial_train_demo
+
+# Minimal judged co-training (both NeuralDevilPolicy and NeuralGodPolicy updated)
+python -m logical_gans.modelbuilder.neural_fraisse.cotraining_demo
 ```
 
-- **Colab:** click the badge above, then Runtime → Run all.
-- **Evidence:** [reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md) — held-out benchmark; the learned Builder beats active non-neural baselines.
-- **Tutorial:** [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md) · **Colab guide:** [docs/tutorials/colab_quickstart.md](docs/tutorials/colab_quickstart.md) · **Notebook:** [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
-- **Limitations:** proof of concept; one controlled task family; learned Builder only (the Devil is active but symbolic); not a GAN; not full FOL; no `DEVIL_WINS` yet.
-
-- **Paper** preprint: [Bounded Adversarial Finite Model Construction: A LOGAN Prototype with a Symbolic Devil and a Learned Builder](https://www.researchgate.net/publication/407142849_Bounded_Adversarial_Finite_Model_Construction_A_LOGAN_Prototype_with_a_Symbolic_Devil_and_a_Learned_Builder)
+- **Paper:** [`papers/ultraconstructive_model_theory/main.tex`](papers/ultraconstructive_model_theory/main.tex) — *Ultraconstructive Model Theory via Bounded Adversarial Finite Structures*. Compile to `papers/ultraconstructive_model_theory/main.pdf` with `latexmk -pdf main.tex`.
+- **Evidence:** [reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md) · **Tutorial:** [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md) · **Notebook:** [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
 
 
 ---
