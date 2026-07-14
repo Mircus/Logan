@@ -471,7 +471,7 @@ See [FRAMEWORK_VALIDATION_REPORT.md](FRAMEWORK_VALIDATION_REPORT.md) for detaile
 
 ### Future Extensions
 
-**Note on Training**: The current release includes **full PyTorch neural GAN training** (Experiment 4). Training runs on CPU and achieves 5-14% improvements. With GPU acceleration and hyperparameter tuning, we expect 40-70% property satisfaction rates.
+**Note on Training**: The current release includes **full PyTorch neural GAN training** (Experiment 4). Training runs on CPU and achieves 5-14% improvements. With GPU acceleration and hyperparameter tuning, we project 40-70% property satisfaction rates (projected; not yet validated on GPU hardware).
 
 **Planned extensions**:
 - 🔄 GPU-accelerated training for higher satisfaction rates
