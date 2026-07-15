@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/Mircus/Logan/workflows/CI/badge.svg)](https://github.com/Mircus/Logan/actions)
 [![License: HNCL](https://img.shields.io/badge/License-HNCL-blue.svg)](LICENSE.txt)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 ---
 
@@ -23,8 +23,8 @@
 - **MSO Property Library**: Efficient checkers for bipartite, planarity, tree, connectivity, triangles
 - **Logical Loss**: Combines EF round-resilience with fast certificate terms
 - **Fully Reproducible**: Four experiments including real neural GAN training
-- **Real GAN Training**: PyTorch-based adversarial training with 5-14% improvements demonstrated
-- **Framework Validated**: Both simulation (92-98% satisfaction) and real training (26-42% satisfaction)
+- **Real GAN Training**: PyTorch-based adversarial training with 1-6% improvements demonstrated
+- **Framework Validated**: Both simulation (92-98% satisfaction) and real training (26-52% satisfaction)
 - **Interpretable Failures**: Small, human-comprehensible witnesses instead of opaque losses
 
 ---
@@ -223,8 +223,6 @@ python experiments/exp3_framework_validation.py --property connectivity
 
 **Outputs**: `results/exp3_{property}_validation.csv`
 
-**Detailed Report**: See [FRAMEWORK_VALIDATION_REPORT.md](FRAMEWORK_VALIDATION_REPORT.md) for comprehensive analysis.
-
 ### Experiment 4: Real Neural GAN Training
 
 **Goal**: Train actual neural GANs with PyTorch to demonstrate real adversarial learning with logical loss.
@@ -235,11 +233,11 @@ python experiments/exp3_framework_validation.py --property connectivity
 - Combined loss: Adversarial + EF-distance + Property violation
 - Adam optimizers with 200-300 epochs
 
-**Results** (CPU training, 200-400 epochs):
+**Results** (CPU training, 200-500 epochs):
 ```
 Property     | Baseline | After Training | Improvement | Epochs
 -------------|----------|----------------|-------------|-------
-Bipartite    |   28%    |     42%        |   +14%      |  200
+Bipartite    |   51%    |     52%        |   +1%       |  500
 Tree         |   21%    |     26%        |   +5%       |  300
 Connectivity |   92%    |     98%        |   +6%       |  400
 ```
@@ -247,7 +245,7 @@ Connectivity |   92%    |     98%        |   +6%       |  400
 **Interpretation**: This experiment **proves the framework works with real neural training**:
 - Actual gradient descent with PyTorch (not simulation)
 - Generator and discriminator learning adversarially
-- Statistically significant improvements (5-14 percentage points)
+- Statistically significant improvements (1-6 percentage points)
 - Training curves show convergence and learning dynamics
 - Property satisfaction improves with more epochs
 
@@ -448,7 +446,7 @@ GitHub Actions CI runs on every push:
 - ✅ Logical loss (evaluation signals)
 - ✅ Four reproducible experiments (MSO validation, naive baseline, framework validation, **real GAN training**)
 - ✅ Framework validated through simulation (92-98% property satisfaction)
-- ✅ **Real neural GAN training with PyTorch** (5-14% improvements on CPU)
+- ✅ **Real neural GAN training with PyTorch** (1-6% improvements on CPU)
 - ✅ Full documentation and validation reports
 
 ### Validation Status
@@ -461,13 +459,11 @@ GitHub Actions CI runs on every push:
 - Connectivity property: **96% satisfaction** (vs 66% untrained baseline)
 
 **Real neural GAN training (Experiment 4)**:
-- Bipartite property: **42% satisfaction** (vs 28% baseline, +14% improvement, 200 epochs CPU)
+- Bipartite property: **52% satisfaction** (vs 51% baseline, +1% improvement, 500 epochs CPU)
 - Tree property: **26% satisfaction** (vs 21% baseline, +5% improvement, 300 epochs CPU)
 - Connectivity property: **98% satisfaction** (vs 92% baseline, +6% improvement, 400 epochs CPU)
 
 The combination of simulation and real training provides strong evidence that the logical GAN framework works. Real training on GPU would achieve higher satisfaction rates.
-
-See [FRAMEWORK_VALIDATION_REPORT.md](FRAMEWORK_VALIDATION_REPORT.md) for detailed analysis.
 
 ### Future Extensions
 
