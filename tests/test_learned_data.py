@@ -1,3 +1,6 @@
+import pytest
+pytest.importorskip("torch")
+
 from pathlib import Path
 
 from logical_gans.modelbuilder.core.loader import load_theory

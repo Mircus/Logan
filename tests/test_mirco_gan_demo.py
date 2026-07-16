@@ -5,6 +5,7 @@ existing learned God (NeuralBuilder + FraisseNeuralPrior) + the symbolic Judge,
 and shows GOD_WINS (Demo A) and DEVIL_WINS (Demo B) with a visible trace.
 """
 import pytest
+pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.neural_fraisse import mirco_gan_demo
 from logical_gans.modelbuilder.neural_fraisse.neural_devil import (

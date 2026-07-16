@@ -5,6 +5,9 @@ four methods, an alternating Devil/Builder trace, a computed verdict). It does
 NOT assert PASS -- a tiny fast run is noisy; the PASS/FAIL claim belongs to the
 full benchmark command.
 """
+import pytest
+pytest.importorskip("torch")
+
 from logical_gans.modelbuilder.neural_fraisse.benchmark import run_benchmark
 from logical_gans.modelbuilder.neural_fraisse.tasks import generate_tasks
 
