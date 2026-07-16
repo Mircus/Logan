@@ -5,7 +5,8 @@ certificates, rewards come from outcomes, and the neural Devil's parameters
 actually change after a training step (no fake learning).
 """
 import pytest
-import torch
+
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.neural_fraisse import adversarial_train_demo
 from logical_gans.modelbuilder.neural_fraisse.adversarial_train_demo import (

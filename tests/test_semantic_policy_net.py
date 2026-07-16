@@ -1,4 +1,5 @@
-import torch
+import pytest
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.core.partial_structure import PartialStructure
 from logical_gans.modelbuilder.core.signature import Signature

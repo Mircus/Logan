@@ -5,7 +5,8 @@ Fresh signature with arity > 2:  Σ = {H/4 relation, f/3 function, c constant}.
 import json
 from pathlib import Path
 
-import torch
+import pytest
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.arena import solve_arena
 from logical_gans.modelbuilder.core.partial_structure import PartialStructure

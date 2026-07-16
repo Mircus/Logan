@@ -5,7 +5,8 @@ Judge decides outcomes, and the DEVIL_WINS certificate / GOD_WINS paths still wo
 No fake God loss; no no_grad around the trainable God path.
 """
 import pytest
-import torch
+import pytest
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.neural_fraisse import cotraining_demo
 from logical_gans.modelbuilder.neural_fraisse.cotraining_demo import (

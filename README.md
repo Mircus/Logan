@@ -245,7 +245,7 @@ Connectivity |   92%    |     98%        |   +6%       |  400
 **Interpretation**: This experiment **proves the framework works with real neural training**:
 - Actual gradient descent with PyTorch (not simulation)
 - Generator and discriminator learning adversarially
-- Statistically significant improvements (1-6 percentage points)
+- Small observed changes (+1 to +6 pp) from a single unseeded run; bipartite +1 pp is within sampling noise and not statistically established.
 - Training curves show convergence and learning dynamics
 - Property satisfaction improves with more epochs
 
@@ -467,7 +467,7 @@ The combination of simulation and real training provides strong evidence that th
 
 ### Future Extensions
 
-**Note on Training**: The current release includes **full PyTorch neural GAN training** (Experiment 4). Training runs on CPU and achieves 5-14% improvements. With GPU acceleration and hyperparameter tuning, we project 40-70% property satisfaction rates (projected; not yet validated on GPU hardware).
+**Note on Training**: The current release includes **full PyTorch neural GAN training** (Experiment 4). Training runs on CPU and achieves 1-6 percentage-point improvements.
 
 **Planned extensions**:
 - 🔄 GPU-accelerated training for higher satisfaction rates

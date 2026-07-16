@@ -5,7 +5,8 @@ them. It never invents or returns an illegal/generated move.
 """
 from pathlib import Path
 
-import torch
+import pytest
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.core.partial_structure import PartialStructure
 from logical_gans.modelbuilder.neural_fraisse.fight import build_task, load_problem

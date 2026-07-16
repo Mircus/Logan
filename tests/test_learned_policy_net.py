@@ -1,5 +1,6 @@
-import torch
-import torch.nn as nn
+import pytest
+torch = pytest.importorskip("torch")
+import torch.nn as nn  # torch already skipped above if unavailable
 
 from logical_gans.modelbuilder.learned.policy_net import RelationPolicyNet
 

@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import pytest
-import torch
+import pytest
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.core.devil import run_devil
 from logical_gans.modelbuilder.core.loader import load_claim, load_theory

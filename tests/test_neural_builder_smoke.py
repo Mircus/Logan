@@ -1,6 +1,7 @@
 from pathlib import Path
 
-import torch
+import pytest
+torch = pytest.importorskip("torch")
 
 from logical_gans.modelbuilder.core.loader import load_theory
 from logical_gans.modelbuilder.core.partial_structure import PartialStructure
