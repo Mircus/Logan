@@ -249,7 +249,7 @@ Connectivity |   92%    |     98%        |   +6%       |  400
 - Training curves show convergence and learning dynamics
 - Property satisfaction improves with more epochs
 
-**Key Achievement**: This is **real GAN training**, not simulation. The neural networks learn to generate graphs satisfying logical properties through adversarial training combined with EF-based logical loss.
+**Key Achievement**: This is **real GAN training**, not simulation. The neural networks learn to generate graphs satisfying logical properties through adversarial training. Note: in the current CPU runs, the EF-distance term was 0 at baseline and remained 0 throughout training (ef_improvement=0.0000 in all three CSVs) — property satisfaction gains come from the property-violation loss term, not the EF-distance signal.
 
 **Run**:
 ```bash
