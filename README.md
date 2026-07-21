@@ -37,7 +37,7 @@ A symbolic **bounded partial finite-model generator** lives at:
 src/logical_gans/modelbuilder/
 ```
 
-It is independent of torch and currently supports universal **Horn/equational
+It is independent of torch at runtime and currently supports universal **Horn/equational
 P0 theory packs** (theories, claims, and structures as JSON data). It fills
 unknown interpretation tables while a three-valued *Devil* probes bounded axiom
 instances. See `docs/modelbuilder_architecture.md`,
@@ -242,10 +242,10 @@ Tree         |   21%    |     26%        |   +5%       |  300
 Connectivity |   92%    |     98%        |   +6%       |  400
 ```
 
-**Interpretation**: This experiment **proves the framework works with real neural training**:
+**Interpretation**: This experiment **demonstrates real neural GAN training on CPU**:
 - Actual gradient descent with PyTorch (not simulation)
 - Generator and discriminator learning adversarially
-- Small observed changes (+1 to +6 pp) from a single unseeded run; bipartite +1 pp is within sampling noise and not statistically established.
+- Small observed changes (+1 to +6 pp) from a single unseeded run; bipartite +1 pp is within sampling noise and not statistically established
 - Training curves show convergence and learning dynamics
 - Property satisfaction improves with more epochs
 
@@ -388,7 +388,8 @@ logan/
 │   ├── exp3_*_validation.csv  # Experiment 3 results
 │   └── exp4_*_gan.csv         # Experiment 4 results (NEW)
 ├── tests/
-│   └── test_sanity.py         # Basic sanity tests
+│   ├── test_sanity.py         # Basic sanity tests
+│   └── test_*.py              # 33 test files covering all modules
 
 ```
 
@@ -524,5 +525,5 @@ Please open an issue before starting major work.
 
 <p align="center">
   <b>LOGAN: Where Logic Meets Adversarial Learning</b><br>
-  🎲 Generated with logical constraints | 🔍 Validated through EF games | 📊 Fully reproducible
+  🎲 Generated with logical constraints | 🔍 Grounded in EF-game theory | 📊 Fully reproducible
 </p>
