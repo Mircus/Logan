@@ -83,7 +83,7 @@ python -m logical_gans.modelbuilder.neural_fraisse.adversarial_train_demo
 python -m logical_gans.modelbuilder.neural_fraisse.cotraining_demo
 ```
 
-- **Paper:** [`[papers/ultraconstructive_model_theory/main.tex`](papers/ultraconstructive_model_theory/main.tex](https://www.researchgate.net/publication/410686160_Ultraconstructive_Model_Theory_via_Bounded_Adversarial_Finite_Structures)) — *Ultraconstructive Model Theory via Bounded Adversarial Finite Structures*. Compile to `papers/ultraconstructive_model_theory/main.pdf` with `latexmk -pdf main.tex`.
+- **Paper:** (https://www.researchgate.net/publication/410686160_Ultraconstructive_Model_Theory_via_Bounded_Adversarial_Finite_Structures) — *Ultraconstructive Model Theory via Bounded Adversarial Finite Structures*. 
 - **Evidence:** [reports/neural_fraisse_poc.md](reports/neural_fraisse_poc.md) · **Tutorial:** [docs/tutorials/first_neural_fraisse_fight.md](docs/tutorials/first_neural_fraisse_fight.md) · **Notebook:** [notebooks/neural_fraisse_quickstart.ipynb](notebooks/neural_fraisse_quickstart.ipynb)
 
 
